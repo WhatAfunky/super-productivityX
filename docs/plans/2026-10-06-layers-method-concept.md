@@ -1,6 +1,6 @@
 # Layers method — concept
 
-**Status:** Draft 1, 2026-10-06. Design only; no code written yet. Everything here was agreed in conversation before a line of code, and anything marked **Open** is still undecided.
+**Status:** Draft 1, 2026-10-06. v0 is built on `feat/layers-v0`; see §12 for what shipped and where it differs from this plan. Anything marked **Open** is still undecided.
 
 **Scope of the fork:** a personal change to a fork of Super Productivity. Sync is designed _in mind_ (§7) but is not a focus until v2.
 
@@ -175,6 +175,8 @@ Merging "Sound" into "SFX" sets `Sound.mergedIntoId = SFX` — a single-entity e
 - E2E: add/rename layer on two clients and converge; concurrent label rename vs recolor; the "no image on this device" placeholder across two clients; project delete while another client adds a layer.
 - Decide whether `Section` deletion warrants anything beyond "layers show as unfiled".
 - Confirm the touch-point checklist in §10 against a fresh `section` diff.
+- **Blocker for syncing with anything upstream (found in v0):** every op carries an entity type, and the official SuperSync server rejects types it doesn't know (`ALLOWED_ENTITY_TYPES` in `packages/super-sync-server/src/sync/services/validation.service.ts`, "Invalid entityType"). `LAYER` exists only in this fork, so layer ops would be refused by an unmodified server, and official apps on other devices may fail on them too (unverified for Dropbox/WebDAV/file sync). Before turning on sync: self-host the fork's server, or keep every synced device on this fork.
+- Orphan cleanup: a layer whose project was deleted on another device in the same sync window is not removed by any repair yet.
 
 ## 8. Phasing
 
@@ -239,3 +241,17 @@ Merging "Sound" into "SFX" sets `Sound.mergedIntoId = SFX` — a single-entity e
 - **O4.** Thumbnails: v0 can scale the stored image with CSS and lazy loading; if big screenshots make lists heavy, generate small thumbnails in v1.
 - **O5.** Copy labels from another project, for people who run several game projects. Later.
 - **O6.** Single `labelId` vs `labelIds` (§7.2).
+
+## 12. v0 as built (2026-10-06)
+
+What shipped on `feat/layers-v0`, and where it differs from the plan above:
+
+- **Data:** `Layer` slice (`src/app/features/layer/`) with `id`, `projectId`, `title`, `createdAt`, `sectionId?`, `imageId?`; entity type `LAYER`; op codes `LYA`/`LYU`/`LYD`. The slice is typed `LayerState | undefined` in the model config so data written before layers validates unchanged (`frozen-state.spec.ts` stays green). Updates can never change `id`, `projectId` or `createdAt`. Deleting a project removes its layers in the same op.
+- **Opt-in:** `Project.isLayersEnabled?`, a switch in project settings shown only where Layers are supported. The settings dialog writes it only on those platforms, so editing a project on mobile can't switch Layers off.
+- **Platform (O3 decided for v0):** hidden on the native mobile apps only. Desktop browsers get Layers too; their screenshots go to IndexedDB with the existing 2 MB cap.
+- **Tasks ⇄ Layers switch:** an icon button in the header next to the project menu, not the segmented control from the mockup. The header row is tuned tightly for width, and one icon button follows the existing pattern there.
+- **Route:** `/project/:id/layers`. If Layers are off, it shows a notice with a "Turn on Layers" button.
+- **Screenshots:** paste anywhere on the Layers view (Cmd/Ctrl+V; pastes into text fields are left alone), drop onto the preview, or "Choose image…". Stored through `ClipboardImageService` under ids of the form `layer-<nanoid>`. Only ids in that exact shape are ever loaded or deleted, because synced ids end up in file names. Replacing or removing an image, or deleting a layer, deletes the old file on this device.
+- **Known caveat:** Settings → Clipboard images → "delete all" also deletes layer screenshots. The layers then show "No image on this device".
+- **Folders:** "Add folder" in the Layers view creates an ordinary project section, so it also shows in the Tasks tab (O1 still open).
+- **Not in v0, as planned:** labels, the focus-mode strip, search, vision and anchor.

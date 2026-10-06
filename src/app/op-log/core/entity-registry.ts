@@ -93,6 +93,11 @@ import {
   adapter as sectionAdapter,
   selectEntities as selectSectionEntitiesFromAdapter,
 } from '../../features/section/store/section.reducer';
+import {
+  LAYER_FEATURE_NAME,
+  adapter as layerAdapter,
+  selectEntities as selectLayerEntitiesFromAdapter,
+} from '../../features/layer/store/layer.reducer';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // IMPORTS - Selectors
@@ -149,6 +154,10 @@ import {
   selectSectionFeatureState,
   selectSectionById,
 } from '../../features/section/store/section.selectors';
+import {
+  selectLayerById,
+  selectLayerFeatureState,
+} from '../../features/layer/store/layer.selectors';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ENTITY CONFIGS
@@ -265,6 +274,18 @@ export const buildEntityRegistry = (): EntityRegistry<EntityType> =>
         selectSectionEntitiesFromAdapter,
       ),
       selectById: selectSectionById,
+    },
+
+    LAYER: {
+      storagePattern: 'adapter',
+      featureName: LAYER_FEATURE_NAME,
+      payloadKey: 'layer',
+      adapter: layerAdapter,
+      selectEntities: createSelector(
+        selectLayerFeatureState,
+        selectLayerEntitiesFromAdapter,
+      ),
+      selectById: selectLayerById,
     },
 
     // ── SINGLETON ENTITIES ─────────────────────────────────────────────────────

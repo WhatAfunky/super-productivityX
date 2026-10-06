@@ -23,6 +23,8 @@ export interface ProjectBasicCfg {
   doneOn?: number | null;
   isHiddenFromMenu?: boolean;
   isEnableBacklog?: boolean;
+  // Opt-in Layers view for this project (desktop only). Absent → off.
+  isLayersEnabled?: boolean;
   taskIds: string[];
   backlogTaskIds: string[];
   noteIds: string[];

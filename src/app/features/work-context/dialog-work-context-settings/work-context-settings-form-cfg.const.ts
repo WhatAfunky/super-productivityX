@@ -1,6 +1,7 @@
 import { FormlyFieldConfig } from '@ngx-formly/core';
 import { T } from '../../../t.const';
 import { WORK_CONTEXT_THEME_CONFIG_FORM_CONFIG } from '../work-context.const';
+import { IS_LAYERS_PLATFORM_SUPPORTED } from '../../layer/layer.util';
 
 export const buildWorkContextSettingsFormCfg = (
   isProject: boolean,
@@ -51,6 +52,16 @@ export const buildWorkContextSettingsFormCfg = (
         },
       },
     );
+    if (IS_LAYERS_PLATFORM_SUPPORTED) {
+      basicFields.push({
+        key: 'isLayersEnabled',
+        type: 'checkbox',
+        templateOptions: {
+          label: T.F.LAYER.L_ENABLE_LAYERS,
+          description: T.F.LAYER.D_ENABLE_LAYERS,
+        },
+      });
+    }
   }
 
   const sharedItems = WORK_CONTEXT_THEME_CONFIG_FORM_CONFIG.items!;

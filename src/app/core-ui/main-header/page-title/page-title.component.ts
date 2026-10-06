@@ -23,6 +23,7 @@ import { TaskViewCustomizerService } from '../../../features/task-view-customize
 import { TaskViewCustomizerPanelComponent } from '../../../features/task-view-customizer/task-view-customizer-panel/task-view-customizer-panel.component';
 import { GlobalConfigService } from '../../../features/config/global-config.service';
 import { KeyboardConfig } from '@sp/keyboard-config';
+import { IS_LAYERS_PLATFORM_SUPPORTED } from '../../../features/layer/layer.util';
 
 @Component({
   selector: 'page-title',
@@ -68,6 +69,25 @@ import { KeyboardConfig } from '@sp/keyboard-config';
               mat-icon-button
             >
               <mat-icon svgIcon="plainspace"></mat-icon>
+            </button>
+          }
+          @if (layersToggleLink(); as link) {
+            <button
+              class="layers-toggle-btn"
+              [class.isActive]="isLayersPage()"
+              [routerLink]="link"
+              [matTooltip]="
+                (isLayersPage() ? T.F.LAYER.SHOW_TASKS : T.F.LAYER.SHOW_LAYERS)
+                  | translate
+              "
+              [attr.aria-label]="
+                (isLayersPage() ? T.F.LAYER.SHOW_TASKS : T.F.LAYER.SHOW_LAYERS)
+                  | translate
+              "
+              [attr.aria-pressed]="isLayersPage()"
+              mat-icon-button
+            >
+              <mat-icon>layers</mat-icon>
             </button>
           }
           <button
@@ -314,6 +334,14 @@ import { KeyboardConfig } from '@sp/keyboard-config';
       .project-settings-btn[aria-expanded='true'] {
         color: var(--brand);
       }
+
+      .layers-toggle-btn {
+        color: var(--text-color-muted);
+
+        &.isActive {
+          color: var(--c-accent);
+        }
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -384,6 +412,24 @@ export class PageTitleComponent {
 
   isSpecialSection = computed(() => !!this._routeTitleKey());
   isWorkViewPage = computed(() => /tasks$/.test(this._url()));
+  isLayersPage = computed(() => /\/layers$/.test(this._url()));
+
+  // Tasks ⇄ Layers switch, only for a project that opted in to Layers on a
+  // platform that supports them. Null hides the button.
+  layersToggleLink = computed<string[] | null>(() => {
+    const wc = this.activeWorkContext();
+    if (
+      !IS_LAYERS_PLATFORM_SUPPORTED ||
+      !wc ||
+      wc.type !== WorkContextType.PROJECT ||
+      // The active work context spreads the project, but its type doesn't
+      // surface project-only fields.
+      !(wc as { isLayersEnabled?: boolean }).isLayersEnabled
+    ) {
+      return null;
+    }
+    return ['/project', wc.id, this.isLayersPage() ? 'tasks' : 'layers'];
+  });
 
   displayTitle = computed(() => {
     const key = this._routeTitleKey();

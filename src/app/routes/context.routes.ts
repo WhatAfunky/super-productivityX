@@ -3,6 +3,7 @@ import { HistoryComponent } from '../features/history/history.component';
 import { DailySummaryComponent } from '../pages/daily-summary/daily-summary.component';
 import { MetricPageComponent } from '../pages/metric-page/metric-page.component';
 import { ProjectTaskPageComponent } from '../pages/project-task-page/project-task-page.component';
+import { ProjectLayersPageComponent } from '../pages/project-layers-page/project-layers-page.component';
 
 const SHARED_CONTEXT_ROUTES: Routes = [
   {
@@ -45,6 +46,11 @@ export const PROJECT_CHILD_ROUTES: Routes = [
     path: 'tasks',
     component: ProjectTaskPageComponent,
     data: { page: 'project-tasks' },
+  },
+  {
+    path: 'layers',
+    component: ProjectLayersPageComponent,
+    data: { page: 'project-layers' },
   },
   ...SHARED_CONTEXT_ROUTES,
 ];

@@ -1,0 +1,199 @@
+@use '../../../../styles/_globals.scss' as *;
+
+:host {
+  display: block;
+  height: 100%;
+}
+
+// Stacked and page-scrolling on narrow windows; two independently scrolling
+// panes (list | preview) from `sm` up.
+.layers-view {
+  height: 100%;
+  overflow-y: auto;
+
+  @include mq(sm) {
+    display: grid;
+    grid-template-columns: minmax(300px, 420px) 1fr;
+    overflow: hidden;
+  }
+}
+
+.list-pane,
+.preview-pane {
+  padding: var(--s2);
+  min-height: 0;
+
+  @include mq(sm) {
+    overflow-y: auto;
+  }
+}
+
+.list-pane {
+  border-bottom: 1px solid var(--divider-color);
+
+  @include mq(sm) {
+    border-bottom: 0;
+    border-right: 1px solid var(--divider-color);
+  }
+}
+
+.preview-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.field {
+  min-width: 0;
+  padding: var(--s-half) var(--s);
+  border: 1px solid var(--divider-color);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-color);
+  font: inherit;
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+}
+
+.add-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s);
+  margin-bottom: var(--s2);
+}
+
+.add-title {
+  flex: 1 1 160px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s);
+  margin-bottom: var(--s);
+}
+
+.empty {
+  color: var(--text-color-muted);
+}
+
+.group-count {
+  margin-inline-start: auto;
+  color: var(--text-color-muted);
+  font-size: var(--font-size-sm);
+}
+
+.layer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.layer-row {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  align-items: center;
+  gap: var(--s);
+  width: 100%;
+  padding: var(--s-half) var(--s);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--state-hover);
+  }
+
+  &.isSelected {
+    border-color: var(--c-primary);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+}
+
+.thumb {
+  width: 64px;
+  height: 40px;
+}
+
+.layer-text {
+  min-width: 0;
+}
+
+.layer-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layer-meta {
+  display: block;
+  color: var(--text-color-muted);
+  font-size: var(--font-size-sm);
+}
+
+.show-older {
+  margin-top: var(--s-half);
+}
+
+.preview-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s);
+}
+
+.preview-title {
+  flex: 1;
+  font-size: var(--font-size-lg);
+}
+
+.preview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s);
+}
+
+.folder-label {
+  display: flex;
+  align-items: center;
+  gap: var(--s);
+  color: var(--text-color-muted);
+  font-size: var(--font-size-sm);
+}
+
+.drop-zone {
+  display: flex;
+  flex: 1;
+  min-height: 240px;
+  border-radius: var(--radius-sm);
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+}
+
+.preview-image {
+  flex: 1;
+}
+
+.preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s);
+}

@@ -1,0 +1,231 @@
+<div class="layers-view">
+  <section class="list-pane">
+    <form
+      class="add-bar"
+      (submit)="$event.preventDefault(); add(titleInput)"
+    >
+      <input
+        #titleInput
+        class="field add-title"
+        type="text"
+        [value]="newTitle()"
+        (input)="setNewTitle($event)"
+        [attr.maxlength]="MAX_TITLE_LENGTH"
+        [placeholder]="T.F.LAYER.ADD_PLACEHOLDER | translate"
+        [attr.aria-label]="T.F.LAYER.ADD_PLACEHOLDER | translate"
+      />
+      <select
+        class="field"
+        (change)="setNewSectionId($event)"
+        [attr.aria-label]="T.F.LAYER.FOLDER | translate"
+      >
+        <option
+          value=""
+          [selected]="!newSectionId()"
+        >
+          {{ T.F.LAYER.NO_FOLDER | translate }}
+        </option>
+        @for (section of sections(); track section.id) {
+          <option
+            [value]="section.id"
+            [selected]="section.id === newSectionId()"
+          >
+            {{ section.title }}
+          </option>
+        }
+      </select>
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        [disabled]="!newTitle().trim()"
+      >
+        {{ T.F.LAYER.ADD | translate }}
+      </button>
+    </form>
+
+    <div class="toolbar">
+      <segmented-button-group
+        size="md"
+        [options]="viewModeOptions"
+        [selectedId]="viewMode()"
+        [ariaLabel]="T.F.LAYER.VIEW_MODE | translate"
+        (selectionChange)="setViewMode($event)"
+      ></segmented-button-group>
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="addFolder()"
+      >
+        <mat-icon>create_new_folder</mat-icon>
+        {{ T.F.LAYER.ADD_FOLDER | translate }}
+      </button>
+    </div>
+
+    @if (!layers().length) {
+      <p class="empty">{{ T.F.LAYER.EMPTY | translate }}</p>
+    }
+
+    @if (viewMode() === 'time') {
+      @for (group of groups(); track group.key) {
+        <ng-container
+          [ngTemplateOutlet]="rows"
+          [ngTemplateOutletContext]="{ $implicit: group }"
+        ></ng-container>
+      }
+    } @else {
+      @for (group of groups(); track group.key) {
+        <collapsible
+          class="layer-group"
+          [title]="group.isUnfiled ? (T.F.LAYER.UNFILED | translate) : group.title"
+          [isExpanded]="group.isExpanded"
+          [isIconBefore]="true"
+          (isExpandedChange)="setGroupExpanded(group.key, $event)"
+        >
+          <span
+            actions
+            class="group-count"
+            >{{ group.total || '' }}</span
+          >
+          <ng-container
+            [ngTemplateOutlet]="rows"
+            [ngTemplateOutletContext]="{ $implicit: group }"
+          ></ng-container>
+        </collapsible>
+      }
+    }
+  </section>
+
+  <section class="preview-pane">
+    @if (selectedLayer(); as layer) {
+      <div class="preview-head">
+        <input
+          class="field preview-title"
+          type="text"
+          [value]="layer.title"
+          [attr.maxlength]="MAX_TITLE_LENGTH"
+          [attr.aria-label]="T.F.LAYER.NAME | translate"
+          (change)="rename(layer, $event)"
+          (keydown.enter)="$any($event.target).blur()"
+        />
+        <button
+          mat-icon-button
+          type="button"
+          [matTooltip]="T.F.LAYER.DELETE | translate"
+          [attr.aria-label]="T.F.LAYER.DELETE | translate"
+          (click)="deleteLayer(layer)"
+        >
+          <mat-icon>delete</mat-icon>
+        </button>
+      </div>
+
+      <div class="preview-meta">
+        <label class="folder-label">
+          {{ T.F.LAYER.FOLDER | translate }}
+          <select
+            class="field"
+            (change)="moveToSection(layer, $event)"
+          >
+            <option
+              value=""
+              [selected]="!layer.sectionId"
+            >
+              {{ T.F.LAYER.NO_FOLDER | translate }}
+            </option>
+            @for (section of sections(); track section.id) {
+              <option
+                [value]="section.id"
+                [selected]="section.id === layer.sectionId"
+              >
+                {{ section.title }}
+              </option>
+            }
+          </select>
+        </label>
+        <span class="layer-meta">{{ layer.createdAt | localeDate: 'medium' }}</span>
+      </div>
+
+      <div
+        class="drop-zone"
+        tabindex="0"
+        (dragover)="onDragOver($event)"
+        (drop)="onDrop(layer, $event)"
+      >
+        <layer-image
+          class="preview-image"
+          [imageId]="layer.imageId"
+          [alt]="layer.title"
+          [emptyText]="T.F.LAYER.PASTE_HINT | translate"
+        ></layer-image>
+      </div>
+
+      <div class="preview-actions">
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="chooseImage()"
+        >
+          <mat-icon>image</mat-icon>
+          {{ T.F.LAYER.CHOOSE_IMAGE | translate }}
+        </button>
+        @if (layer.imageId) {
+          <button
+            mat-button
+            type="button"
+            (click)="removeImage(layer)"
+          >
+            {{ T.F.LAYER.REMOVE_IMAGE | translate }}
+          </button>
+        }
+        <input
+          #fileInput
+          type="file"
+          accept="image/*"
+          hidden
+          (change)="onFileChosen(layer, $event)"
+        />
+      </div>
+    } @else {
+      <p class="empty">{{ T.F.LAYER.NO_SELECTION | translate }}</p>
+    }
+  </section>
+</div>
+
+<ng-template
+  #rows
+  let-group
+>
+  <ul class="layer-list">
+    @for (layer of group.shown; track layer.id) {
+      <li>
+        <button
+          type="button"
+          class="layer-row"
+          [class.isSelected]="layer.id === selectedId()"
+          (click)="select(layer)"
+        >
+          <layer-image
+            class="thumb"
+            [imageId]="layer.imageId"
+          ></layer-image>
+          <span class="layer-text">
+            <span class="layer-title">{{ layer.title }}</span>
+            <span class="layer-meta">{{
+              layer.createdAt | localeDate: 'mediumDate'
+            }}</span>
+          </span>
+        </button>
+      </li>
+    }
+  </ul>
+  @if (group.hiddenCount) {
+    <button
+      mat-button
+      type="button"
+      class="show-older"
+      (click)="showAll(group.key)"
+    >
+      {{ T.F.LAYER.SHOW_OLDER | translate: { nr: group.hiddenCount } }}
+    </button>
+  }
+</ng-template>

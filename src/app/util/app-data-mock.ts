@@ -26,6 +26,7 @@ export const createAppDataCompleteMock = (): AppDataComplete => ({
   },
   tag: createEmptyEntity(),
   section: createEmptyEntity(),
+  layer: createEmptyEntity(),
   simpleCounter: {
     ...createEmptyEntity(),
     ids: [],

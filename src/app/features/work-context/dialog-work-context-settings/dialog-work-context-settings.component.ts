@@ -20,6 +20,7 @@ import { adjustToLiveFormlyForm } from '../../../util/adjust-to-live-formly-form
 import { MatButton } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
 import { SnackService } from 'src/app/core/snack/snack.service';
+import { IS_LAYERS_PLATFORM_SUPPORTED } from '../../layer/layer.util';
 
 export interface WorkContextSettingsDialogData {
   isProject: boolean;
@@ -171,6 +172,12 @@ export class DialogWorkContextSettingsComponent {
           icon: p.icon,
           isEnableBacklog: p.isEnableBacklog,
           isHiddenFromMenu: p.isHiddenFromMenu,
+          // Written only where the form shows the switch: a client without
+          // Layers (mobile) must not turn it off for the user's desktop. Always
+          // written there, so Cancel restores "off" for a never-enabled project.
+          ...(IS_LAYERS_PLATFORM_SUPPORTED
+            ? { isLayersEnabled: !!p.isLayersEnabled }
+            : {}),
           theme,
         },
         isSkipSnack,

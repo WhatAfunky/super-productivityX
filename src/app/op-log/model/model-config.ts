@@ -28,6 +28,8 @@ import { initialTagState } from '../../features/tag/store/tag.reducer';
 import { initialSimpleCounterState } from '../../features/simple-counter/store/simple-counter.reducer';
 import { initialSectionState } from '../../features/section/store/section.reducer';
 import { SectionState } from '../../features/section/section.model';
+import { initialLayerState } from '../../features/layer/store/layer.reducer';
+import { LayerState } from '../../features/layer/layer.model';
 import { initialTaskRepeatCfgState } from '../../features/task-repeat-cfg/store/task-repeat-cfg.reducer';
 import {
   ArchiveModel,
@@ -59,6 +61,9 @@ export type AllModelConfig = {
   tag: ModelCfg<TagState>;
   simpleCounter: ModelCfg<SimpleCounterState>;
   section: ModelCfg<SectionState>;
+  // `| undefined`: data written before layers existed has no `layer` slice,
+  // and typia must accept it as-is (AGENTS.md rule 11, frozen-state.spec.ts).
+  layer: ModelCfg<LayerState | undefined>;
   taskRepeatCfg: ModelCfg<TaskRepeatCfgState>;
   reminders: ModelCfg<Reminder[]>;
   timeTracking: ModelCfg<TimeTrackingState>;
@@ -99,6 +104,10 @@ export const MODEL_CONFIGS: AllModelConfig = {
     defaultData: initialSectionState,
     isMainFileModel: true,
     repair: fixEntityStateConsistency,
+  },
+  layer: {
+    defaultData: initialLayerState,
+    isMainFileModel: true,
   },
   note: {
     defaultData: initialNoteState,
