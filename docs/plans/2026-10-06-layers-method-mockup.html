@@ -1,0 +1,1079 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+    <title>Layers layout mockup v2</title>
+    <style>
+      :root {
+        --bg: #141414;
+        --panel: #1e1e1e;
+        --panel2: #262626;
+        --line: #3a3a3a;
+        --text: #e6e6e6;
+        --dim: #8c8c8c;
+        --accent: #ffa726;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #0c0c0c;
+        color: var(--text);
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+        padding: 16px;
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0 0 4px;
+      }
+      .note {
+        color: var(--dim);
+        font-size: 12px;
+        margin: 0 0 12px;
+        max-width: 900px;
+      }
+      .tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+      .tabs button {
+        background: var(--panel);
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 8px 12px;
+        cursor: pointer;
+        font: inherit;
+      }
+      .tabs button.on {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .screen {
+        display: none;
+        overflow-x: auto;
+      }
+      .win:not([style*='max-width:560px']) {
+        min-width: 1060px;
+      }
+      .screen.on {
+        display: block;
+      }
+      .caption {
+        color: var(--dim);
+        font-size: 12px;
+        margin: 8px 0 0;
+        max-width: 900px;
+      }
+
+      .win {
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        height: 680px;
+        max-width: 1240px;
+        display: grid;
+        overflow: hidden;
+      }
+      .win.withside {
+        grid-template-columns: 190px 1fr;
+      }
+      .side {
+        background: var(--panel);
+        border-right: 1px solid var(--line);
+        padding: 12px;
+        color: var(--dim);
+        font-size: 13px;
+      }
+      .side div {
+        padding: 6px 4px;
+      }
+      .side .cur {
+        background: var(--panel2);
+        color: var(--text);
+        border-radius: 6px;
+      }
+      .side .stub {
+        margin-top: 14px;
+        font-size: 11px;
+        border-top: 1px dashed var(--line);
+        padding-top: 8px;
+      }
+
+      .main {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        min-height: 0;
+      }
+      .head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--line);
+      }
+      .head .title {
+        font-weight: 600;
+      }
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .seg span {
+        padding: 4px 10px;
+        cursor: pointer;
+        color: var(--dim);
+        white-space: nowrap;
+      }
+      .seg span.on {
+        background: var(--panel2);
+        color: var(--accent);
+      }
+      .spacer {
+        flex: 1;
+      }
+      .pill {
+        font-size: 11px;
+        border: 1px solid var(--line);
+        border-radius: 99px;
+        padding: 2px 8px;
+        color: var(--dim);
+      }
+      .btn {
+        background: var(--panel2);
+        border: 1px solid var(--line);
+        color: var(--text);
+        border-radius: 6px;
+        padding: 5px 10px;
+        cursor: pointer;
+        font: inherit;
+        font-size: 13px;
+      }
+      .btn.accent {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .field {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 6px 10px;
+        color: var(--text);
+        font: inherit;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .lmeta {
+        color: var(--dim);
+        font-size: 11px;
+      }
+
+      /* label pill: osu!lazer "RANKED" style = small, bold, uppercase, solid fill */
+      .lbl {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #111;
+        border-radius: 7px;
+        padding: 1px 8px;
+        line-height: 15px;
+        vertical-align: middle;
+      }
+      .lbl.btnlike {
+        cursor: pointer;
+      }
+      .lbl.off {
+        opacity: 0.35;
+      }
+      .chip {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 0 7px;
+        color: var(--dim);
+        line-height: 15px;
+        vertical-align: middle;
+      }
+
+      /* A1 */
+      .split {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 420px 1fr;
+        min-height: 0;
+      }
+      .list {
+        border-right: 1px solid var(--line);
+        overflow: auto;
+        padding: 10px;
+      }
+      .toolbar {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 8px;
+        position: sticky;
+        top: -10px;
+        background: var(--bg);
+        padding: 10px 0 8px;
+        z-index: 2;
+      }
+      .grp {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        background: var(--panel);
+        border-radius: 6px;
+        cursor: pointer;
+        margin-top: 8px;
+      }
+      .grp .cnt {
+        margin-left: auto;
+        color: var(--dim);
+        font-size: 12px;
+      }
+      .layer {
+        display: grid;
+        grid-template-columns: 56px 1fr;
+        gap: 10px;
+        padding: 6px 8px;
+        margin-top: 4px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        cursor: pointer;
+      }
+      .layer:hover {
+        background: var(--panel);
+      }
+      .layer.sel {
+        border-color: var(--accent);
+        background: var(--panel);
+      }
+      .thumb {
+        width: 56px;
+        height: 38px;
+        background: #d9d9d9;
+        border-radius: 3px;
+        color: #777;
+        font-size: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+      }
+      .thumb.empty {
+        background: var(--panel2);
+        color: var(--dim);
+        border: 1px dashed var(--line);
+      }
+      .lname {
+        font-size: 13px;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .more {
+        color: var(--dim);
+        font-size: 12px;
+        padding: 6px 8px;
+        cursor: pointer;
+        margin-top: 2px;
+      }
+      .more:hover {
+        color: var(--accent);
+      }
+      .preview {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-width: 0;
+        overflow: auto;
+      }
+      .shot {
+        flex: 1;
+        min-height: 240px;
+        background: #e4e4e4;
+        color: #888;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        text-align: center;
+      }
+      .shot.empty {
+        background: var(--panel);
+        border: 2px dashed var(--line);
+        color: var(--dim);
+        font-size: 15px;
+        padding: 20px;
+      }
+
+      /* A2 */
+      .focus {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        height: 100%;
+      }
+      .clock {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        border: 6px solid var(--panel2);
+        border-top-color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 30px;
+        font-weight: 600;
+      }
+      .ftitle {
+        font-size: 26px;
+      }
+      .fnotes {
+        color: var(--dim);
+        max-width: 420px;
+        text-align: center;
+        font-size: 13px;
+      }
+      .logbar {
+        position: absolute;
+        bottom: 22px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px 10px;
+        width: min(720px, 94%);
+      }
+      .logbar .field {
+        flex: 1;
+        background: var(--bg);
+      }
+      .last {
+        position: absolute;
+        bottom: 78px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: var(--dim);
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .modes {
+        display: flex;
+        gap: 8px;
+        position: absolute;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      .x {
+        position: absolute;
+        top: 10px;
+        right: 14px;
+        color: var(--dim);
+        font-size: 20px;
+      }
+
+      /* manager */
+      .mgr {
+        padding: 16px;
+        overflow: auto;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      th {
+        text-align: left;
+        color: var(--dim);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--line);
+      }
+      td {
+        padding: 8px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: middle;
+      }
+      .sw {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+        margin-right: 4px;
+        cursor: pointer;
+        border: 2px solid transparent;
+      }
+      .sw.on {
+        border-color: #fff;
+      }
+      .goal {
+        background: var(--panel);
+        border-radius: 6px;
+        padding: 8px 10px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Layers: layout mockup v2 (throwaway, fake data)</h1>
+    <p class="note">
+      Not the real app. Grey boxes stand in for screenshots; data is a made-up game
+      project with 58 layers. Everything on the first and third tab is live: click layers,
+      filter by label, search, switch grouping, then rename or recolour a label in the
+      manager and watch the list change.
+    </p>
+
+    <div class="tabs">
+      <button
+        data-t="a1"
+        class="on"
+      >
+        A1 · Layers view
+      </button>
+      <button data-t="a2">A2 · Focus mode log strip</button>
+      <button data-t="mgr">Label manager</button>
+      <button data-t="opt">Opt-in switch</button>
+    </div>
+
+    <!-- ================= A1 ================= -->
+    <section
+      id="a1"
+      class="screen on"
+    >
+      <div class="win withside">
+        <div class="side">
+          <div>Today</div>
+          <div>Inbox</div>
+          <div>Planner</div>
+          <div>Schedule</div>
+          <div>Boards</div>
+          <div style="margin-top: 12px">Projects</div>
+          <div class="cur">My Game</div>
+          <div class="stub">sidebar unchanged</div>
+        </div>
+        <div class="main">
+          <div class="head">
+            <span class="title">My Game</span>
+            <div class="seg"><span>Tasks</span><span class="on">Layers</span></div>
+            <span class="spacer"></span>
+            <span
+              class="pill"
+              id="count"
+              >58 layers</span
+            >
+            <button class="btn">▶ Start focus</button>
+          </div>
+          <div class="split">
+            <div
+              class="list"
+              id="list"
+            >
+              <div class="toolbar">
+                <div class="row">
+                  <div
+                    class="seg"
+                    id="mode"
+                  >
+                    <span
+                      class="on"
+                      data-m="folder"
+                      >By folder</span
+                    ><span data-m="label">By label</span
+                    ><span data-m="time">Timeline</span>
+                  </div>
+                  <span class="spacer"></span>
+                  <button class="btn accent">＋ Layer</button>
+                  <button class="btn">＋ Folder</button>
+                </div>
+                <input
+                  class="field"
+                  id="q"
+                  placeholder="Search layers…"
+                />
+                <div
+                  class="row"
+                  id="chips"
+                ></div>
+              </div>
+              <div id="groups"></div>
+            </div>
+
+            <div class="preview">
+              <div class="row">
+                <input
+                  class="field"
+                  id="pname"
+                  style="flex: 1; font-size: 16px"
+                /><button class="btn">Delete</button>
+              </div>
+              <div class="row">
+                <span class="lmeta">Label</span><span id="plbl"></span
+                ><select
+                  class="field"
+                  id="plsel"
+                ></select>
+                <span class="spacer"></span>
+                <span class="lmeta">Folder</span
+                ><select
+                  class="field"
+                  id="pfold"
+                ></select>
+                <span
+                  class="lmeta"
+                  id="pdate"
+                ></span>
+              </div>
+              <div
+                class="shot"
+                id="pshot"
+              ></div>
+              <div class="row">
+                <button class="btn accent">Paste screenshot (⌘V)</button
+                ><button class="btn">Choose file…</button
+                ><button class="btn">Remove image</button><span class="spacer"></span
+                ><button
+                  class="btn"
+                  onclick="go('mgr')"
+                >
+                  Manage labels…</button
+                ><button class="btn">Export all screenshots…</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="caption">
+        Each folder shows its newest 8 layers and a "show N older" row, so 58 layers never
+        means a 58-row wall. Label chips filter; the label on a layer is one solid pill in
+        the osu!lazer "RANKED" style. In "By label" the folder shows instead as a quiet
+        outline tag.
+      </p>
+    </section>
+
+    <!-- ================= A2 ================= -->
+    <section
+      id="a2"
+      class="screen"
+    >
+      <div class="win">
+        <div class="focus">
+          <div class="modes">
+            <button class="btn">Flowtime</button><button class="btn">Pomodoro</button
+            ><button class="btn">Countdown</button>
+          </div>
+          <div class="x">✕</div>
+          <div class="clock">24:10</div>
+          <div class="ftitle">Get the dash feeling right</div>
+          <div class="fnotes">
+            Notes and subtasks of the current goal, same as focus mode today.
+          </div>
+          <div class="last">
+            Last layer:
+            <span
+              class="lbl"
+              style="background: #5aa9ff"
+              >Code</span
+            >
+            “Dash ability works” · 12 min ago
+          </div>
+          <div class="logbar">
+            <span style="color: var(--dim)">＋</span>
+            <input
+              class="field"
+              placeholder="Did something exist now? Name the layer…"
+            />
+            <button class="btn">
+              <span
+                class="lbl"
+                style="background: #5aa9ff"
+                >Code</span
+              >
+              ▾
+            </button>
+            <button class="btn">Paste screenshot (⌘V)</button>
+            <button class="btn accent">Add layer</button>
+          </div>
+        </div>
+      </div>
+      <p class="caption">
+        Focus mode stays calm: one strip at the bottom, nothing else. The label defaults
+        to the one you used last, so logging is usually just a name.
+      </p>
+    </section>
+
+    <!-- ================= manager ================= -->
+    <section
+      id="mgr"
+      class="screen"
+    >
+      <div
+        class="win"
+        style="grid-template-rows: auto 1fr"
+      >
+        <div class="head">
+          <span class="title">My Game · Labels</span
+          ><span class="lmeta">labels belong to this project only</span
+          ><span class="spacer"></span
+          ><button
+            class="btn accent"
+            id="newlbl"
+          >
+            ＋ New label
+          </button>
+        </div>
+        <div class="mgr">
+          <table>
+            <thead>
+              <tr>
+                <th>Label</th>
+                <th>Name</th>
+                <th>Colour</th>
+                <th>Used by</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="mgrbody"></tbody>
+          </table>
+          <p
+            class="lmeta"
+            style="margin-top: 12px"
+          >
+            Pill style borrowed from the osu!lazer "RANKED" / "LOVED" tags: small, bold,
+            uppercase, solid fill. Rename and recolour are one edit: every layer follows,
+            and the list on the first tab updates live. Merge moves all layers to another
+            label. Delete leaves its layers unlabelled.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= opt-in ================= -->
+    <section
+      id="opt"
+      class="screen"
+    >
+      <div
+        class="win"
+        style="max-width: 560px; height: auto; padding: 16px; gap: 10px"
+      >
+        <div class="title">Project settings · My Game</div>
+        <div
+          class="goal"
+          style="justify-content: space-between"
+        >
+          <span>Title</span><span class="lmeta">…</span>
+        </div>
+        <div
+          class="goal"
+          style="justify-content: space-between"
+        >
+          <span>Hide from menu</span><span class="lmeta">off</span>
+        </div>
+        <div
+          class="goal"
+          style="justify-content: space-between; border: 1px solid var(--accent)"
+        >
+          <span
+            >Layers <span class="lmeta">(desktop only)</span><br /><span class="lmeta"
+              >Log what now exists, with a screenshot, next to your tasks.</span
+            ></span
+          ><span
+            class="pill"
+            style="color: var(--accent); border-color: var(--accent)"
+            >off by default</span
+          >
+        </div>
+      </div>
+      <p class="caption">
+        One switch per project, off by default. Off means the project looks exactly like
+        today: no Layers tab, no log strip in focus mode.
+      </p>
+    </section>
+
+    <script>
+      const PALETTE = [
+        '#8bd450',
+        '#ff66ab',
+        '#ffa24c',
+        '#5aa9ff',
+        '#b57aff',
+        '#ffd84d',
+        '#3dd6c6',
+        '#ff6b6b',
+        '#9aa0a6',
+        '#c6e84a',
+      ];
+      const labels = [
+        { id: 'code', name: 'Code', color: PALETTE[3] },
+        { id: 'art', name: 'Art', color: PALETTE[1] },
+        { id: 'ui', name: 'UI', color: PALETTE[2] },
+        { id: 'sfx', name: 'SFX', color: PALETTE[4] },
+        { id: 'design', name: 'Design', color: PALETTE[0] },
+      ];
+      const folders = ['Planning', 'Production', 'Polish'];
+      const pool = {
+        code: [
+          'Player movement feels good',
+          'Save system prototype works',
+          'Enemy AI patrols',
+          'Inventory data model',
+          'Camera follows player',
+          'Dash ability works',
+          'Level loader exists',
+          'Pause menu logic',
+          'Damage and health system',
+          'Checkpoint system',
+        ],
+        art: [
+          'Player sprite sketch',
+          'Tileset v1 exists',
+          'Enemy concept sheet',
+          'Forest background rough',
+          'Player idle animation',
+          'Boss design locked',
+          'Title screen illustration',
+          'Icon set sketch',
+          'Colour palette locked',
+          'Tile variations',
+        ],
+        ui: [
+          'Save screen sketched',
+          'HUD layout exists',
+          'Main menu mockup',
+          'Inventory screen rough',
+          'Dialogue box styled',
+          'Settings screen done',
+        ],
+        sfx: [
+          'Jump sound placeholder',
+          'Footsteps recorded',
+          'Menu click sounds',
+          'Ambient forest loop',
+          'Hit impact sounds',
+        ],
+        design: [
+          'Core loop written down',
+          'Level 1 beat sheet',
+          'Boss fight outline',
+          'Controls scheme decided',
+          'Progression curve sketch',
+        ],
+      };
+      const pattern = [
+        'code',
+        'art',
+        'code',
+        'ui',
+        'art',
+        'design',
+        'sfx',
+        'code',
+        'art',
+        'ui',
+      ];
+      const layers = [],
+        used = {};
+      for (let i = 0; i < 58; i++) {
+        const lab = pattern[i % 10],
+          n = (used[lab] = used[lab] || 0),
+          p = pool[lab];
+        used[lab]++;
+        layers.push({
+          id: i,
+          label: lab,
+          name:
+            p[n % p.length] +
+            (n >= p.length ? ' v' + (Math.floor(n / p.length) + 1) : ''),
+          folder:
+            lab === 'design' || i < 10 ? 'Planning' : i >= 48 ? 'Polish' : 'Production',
+          date: new Date(2026, 9, 6 - Math.floor((57 - i) * 0.75)),
+          empty: i % 9 === 4,
+        });
+      }
+      layers.sort((a, b) => b.id - a.id); // newest first
+
+      const LIM = 8;
+      let mode = 'folder',
+        q = '',
+        sel = layers[0].id;
+      const filter = new Set(),
+        collapsed = new Set(),
+        expanded = new Set();
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) =>
+        s.replace(
+          /[&<>"]/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
+        );
+      const L = (id) => labels.find((l) => l.id === id);
+      const fmt = (d) => d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+      const pill = (id, extra = '') => {
+        const l = L(id);
+        return l
+          ? `<span class="lbl ${extra}" style="background:${l.color}">${esc(l.name)}</span>`
+          : '<span class="chip">no label</span>';
+      };
+      const visible = () =>
+        layers.filter(
+          (l) =>
+            (!filter.size || filter.has(l.label)) &&
+            (!q || l.name.toLowerCase().includes(q)),
+        );
+
+      function rowHtml(l, tag) {
+        const t =
+          tag === 'label'
+            ? pill(l.label)
+            : tag === 'folder'
+              ? `<span class="chip">${l.folder}</span>`
+              : pill(l.label) + `<span class="chip">${l.folder}</span>`;
+        return `<div class="layer ${l.id === sel ? 'sel' : ''}" data-id="${l.id}">
+      <div class="thumb ${l.empty ? 'empty' : ''}">${l.empty ? 'no image' : 'shot'}</div>
+      <div><div class="lname">${esc(l.name)} ${t}</div><div class="lmeta">${fmt(l.date)}</div></div></div>`;
+      }
+
+      function groupHtml(key, titleHtml, items, tag) {
+        if (!items.length) return '';
+        const isC = collapsed.has(key),
+          all = expanded.has(key);
+        const shown = all ? items : items.slice(0, LIM);
+        let h = `<div class="grp" data-toggle="${key}">${isC ? '▸' : '▾'} ${titleHtml}<span class="cnt">${items.length}</span></div>`;
+        if (!isC) {
+          h += shown.map((l) => rowHtml(l, tag)).join('');
+          if (!all && items.length > LIM)
+            h += `<div class="more" data-more="${key}">Show ${items.length - LIM} older…</div>`;
+        }
+        return h;
+      }
+
+      function renderChips() {
+        $('chips').innerHTML =
+          labels
+            .map((l) => {
+              const n = layers.filter((x) => x.label === l.id).length;
+              return `<span class="lbl btnlike ${filter.size && !filter.has(l.id) ? 'off' : ''}" data-chip="${l.id}" style="background:${l.color}">${esc(l.name)} · ${n}</span>`;
+            })
+            .join('') +
+          (filter.size
+            ? '<span class="lmeta" data-clear="1" style="cursor:pointer">clear</span>'
+            : '');
+      }
+
+      function renderList() {
+        const v = visible();
+        let h = '';
+        if (mode === 'folder')
+          h = folders
+            .map((f) =>
+              groupHtml(
+                'f:' + f,
+                esc(f),
+                v.filter((l) => l.folder === f),
+                'label',
+              ),
+            )
+            .join('');
+        else if (mode === 'label')
+          h = labels
+            .map((l) =>
+              groupHtml(
+                'l:' + l.id,
+                pill(l.id),
+                v.filter((x) => x.label === l.id),
+                'folder',
+              ),
+            )
+            .join('');
+        else h = groupHtml('t', 'All layers · newest first (export order)', v, 'both');
+        $('groups').innerHTML =
+          h || '<div class="lmeta" style="padding:16px">No layers match.</div>';
+        $('count').textContent =
+          (v.length === layers.length
+            ? layers.length
+            : v.length + ' of ' + layers.length) + ' layers';
+      }
+
+      function renderPreview() {
+        const l = layers.find((x) => x.id === sel);
+        if (!l) return;
+        $('pname').value = l.name;
+        $('plbl').innerHTML = pill(l.label);
+        $('plsel').innerHTML = labels
+          .map(
+            (x) =>
+              `<option value="${x.id}" ${x.id === l.label ? 'selected' : ''}>${esc(x.name)}</option>`,
+          )
+          .join('');
+        $('pfold').innerHTML = folders
+          .map((f) => `<option ${f === l.folder ? 'selected' : ''}>${f}</option>`)
+          .join('');
+        $('pdate').textContent = fmt(l.date);
+        const s = $('pshot');
+        s.className = 'shot' + (l.empty ? ' empty' : '');
+        s.innerHTML = l.empty
+          ? 'No screenshot yet<br><small>⌘V to paste, or drop a file</small>'
+          : 'screenshot of the selected layer';
+      }
+
+      const renderAll = () => {
+        renderChips();
+        renderList();
+        renderPreview();
+      };
+
+      $('list').addEventListener('click', (e) => {
+        const lay = e.target.closest('.layer'),
+          tg = e.target.closest('[data-toggle]'),
+          mo = e.target.closest('[data-more]'),
+          ch = e.target.closest('[data-chip]'),
+          cl = e.target.closest('[data-clear]');
+        if (lay) {
+          sel = +lay.dataset.id;
+          renderList();
+          renderPreview();
+        } else if (tg) {
+          const k = tg.dataset.toggle;
+          collapsed.has(k) ? collapsed.delete(k) : collapsed.add(k);
+          renderList();
+        } else if (mo) {
+          expanded.add(mo.dataset.more);
+          renderList();
+        } else if (ch) {
+          const k = ch.dataset.chip;
+          filter.has(k) ? filter.delete(k) : filter.add(k);
+          renderChips();
+          renderList();
+        } else if (cl) {
+          filter.clear();
+          renderChips();
+          renderList();
+        }
+      });
+      $('q').addEventListener('input', (e) => {
+        q = e.target.value.trim().toLowerCase();
+        renderList();
+      });
+      $('mode').addEventListener('click', (e) => {
+        const s = e.target.closest('span');
+        if (!s) return;
+        mode = s.dataset.m;
+        document
+          .querySelectorAll('#mode span')
+          .forEach((x) => x.classList.toggle('on', x === s));
+        renderList();
+      });
+      $('plsel').onchange = (e) => {
+        layers.find((x) => x.id === sel).label = e.target.value;
+        renderAll();
+      };
+      $('pfold').onchange = (e) => {
+        layers.find((x) => x.id === sel).folder = e.target.value;
+        renderAll();
+      };
+      $('pname').oninput = (e) => {
+        layers.find((x) => x.id === sel).name = e.target.value;
+        renderList();
+      };
+
+      /* manager */
+      function renderMgr() {
+        $('mgrbody').innerHTML = labels
+          .map((l, i) => {
+            const n = layers.filter((x) => x.label === l.id).length;
+            return `<tr>
+        <td><span class="lbl" id="mp${i}" style="background:${l.color}">${esc(l.name)}</span></td>
+        <td><input class="field" data-name="${i}" value="${esc(l.name)}" style="width:160px"></td>
+        <td>${PALETTE.map((c) => `<span class="sw ${c === l.color ? 'on' : ''}" data-sw="${i}:${c}" style="background:${c}"></span>`).join('')}</td>
+        <td class="lmeta">${n} layers</td>
+        <td><select class="field"><option>Merge into…</option>${labels
+          .filter((x) => x !== l)
+          .map((x) => `<option>${esc(x.name)}</option>`)
+          .join('')}</select> <button class="btn">Delete</button></td>
+      </tr>`;
+          })
+          .join('');
+      }
+      $('mgrbody').addEventListener('input', (e) => {
+        const i = e.target.dataset.name;
+        if (i === undefined) return;
+        labels[i].name = e.target.value || ' ';
+        $('mp' + i).textContent = labels[i].name;
+        renderAll();
+      });
+      $('mgrbody').addEventListener('click', (e) => {
+        const sw = e.target.closest('[data-sw]');
+        if (!sw) return;
+        const [i, c] = sw.dataset.sw.split(':');
+        labels[i].color = c;
+        renderMgr();
+        renderAll();
+      });
+      $('newlbl').onclick = () => {
+        labels.push({
+          id: 'n' + labels.length,
+          name: 'New label',
+          color: PALETTE[labels.length % PALETTE.length],
+        });
+        renderMgr();
+        renderAll();
+      };
+
+      /* tabs */
+      function go(t) {
+        document
+          .querySelectorAll('.tabs button')
+          .forEach((b) => b.classList.toggle('on', b.dataset.t === t));
+        document
+          .querySelectorAll('.screen')
+          .forEach((s) => s.classList.toggle('on', s.id === t));
+        if (t === 'mgr') renderMgr();
+      }
+      document
+        .querySelectorAll('.tabs button')
+        .forEach((b) => (b.onclick = () => go(b.dataset.t)));
+
+      renderAll();
+      renderMgr();
+    </script>
+  </body>
+</html>
