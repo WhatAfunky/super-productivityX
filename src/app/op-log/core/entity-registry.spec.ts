@@ -31,6 +31,7 @@ describe('entity-registry', () => {
     'BOARD',
     'SECTION',
     'LAYER',
+    'LAYER_LABEL',
     'REMINDER',
     'PLUGIN_USER_DATA',
     'PLUGIN_METADATA',
@@ -51,6 +52,7 @@ describe('entity-registry', () => {
     'ISSUE_PROVIDER',
     'SECTION',
     'LAYER',
+    'LAYER_LABEL',
   ];
 
   const SINGLETON_ENTITIES: EntityType[] = [
@@ -457,8 +459,8 @@ describe('entity-registry', () => {
       ];
 
       // Update this count when adding new entity types to EntityType union
-      // Current: 19 regular + 3 special = 22 total
-      expect(ALL_TESTED.length).toBe(22);
+      // Current: 20 regular + 3 special = 23 total
+      expect(ALL_TESTED.length).toBe(23);
 
       // Verify no duplicates
       const uniqueTypes = new Set(ALL_TESTED);

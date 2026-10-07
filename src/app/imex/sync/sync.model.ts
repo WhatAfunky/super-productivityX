@@ -15,6 +15,7 @@ import { BoardsState } from '../../features/boards/store/boards.reducer';
 import { MenuTreeState } from '../../features/menu-tree/store/menu-tree.model';
 import { SectionState } from '../../features/section/section.model';
 import { LayerState } from '../../features/layer/layer.model';
+import { LayerLabelState } from '../../features/layer/layer-label.model';
 
 export interface AppBaseWithoutLastSyncModelChange {
   project: ProjectState;
@@ -35,6 +36,7 @@ export interface AppBaseWithoutLastSyncModelChange {
   section: SectionState;
   // Optional: absent in data written before layers existed.
   layer?: LayerState;
+  layerLabel?: LayerLabelState;
 }
 
 export interface AppMainFileNoRevsData extends AppBaseWithoutLastSyncModelChange {

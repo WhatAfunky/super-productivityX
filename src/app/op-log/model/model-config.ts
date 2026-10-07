@@ -30,6 +30,8 @@ import { initialSectionState } from '../../features/section/store/section.reduce
 import { SectionState } from '../../features/section/section.model';
 import { initialLayerState } from '../../features/layer/store/layer.reducer';
 import { LayerState } from '../../features/layer/layer.model';
+import { initialLayerLabelState } from '../../features/layer/store/layer-label.reducer';
+import { LayerLabelState } from '../../features/layer/layer-label.model';
 import { initialTaskRepeatCfgState } from '../../features/task-repeat-cfg/store/task-repeat-cfg.reducer';
 import {
   ArchiveModel,
@@ -64,6 +66,7 @@ export type AllModelConfig = {
   // `| undefined`: data written before layers existed has no `layer` slice,
   // and typia must accept it as-is (AGENTS.md rule 11, frozen-state.spec.ts).
   layer: ModelCfg<LayerState | undefined>;
+  layerLabel: ModelCfg<LayerLabelState | undefined>;
   taskRepeatCfg: ModelCfg<TaskRepeatCfgState>;
   reminders: ModelCfg<Reminder[]>;
   timeTracking: ModelCfg<TimeTrackingState>;
@@ -107,6 +110,10 @@ export const MODEL_CONFIGS: AllModelConfig = {
   },
   layer: {
     defaultData: initialLayerState,
+    isMainFileModel: true,
+  },
+  layerLabel: {
+    defaultData: initialLayerLabelState,
     isMainFileModel: true,
   },
   note: {

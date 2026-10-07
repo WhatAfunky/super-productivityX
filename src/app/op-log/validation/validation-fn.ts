@@ -10,6 +10,7 @@ import {
 import { ProjectState } from '../../features/project/project.model';
 import { SectionState } from '../../features/section/section.model';
 import { LayerState } from '../../features/layer/layer.model';
+import { LayerLabelState } from '../../features/layer/layer-label.model';
 import { MenuTreeState } from '../../features/menu-tree/store/menu-tree.model';
 import { TaskState } from '../../features/tasks/task.model';
 import { createValidate, IValidation } from 'typia';
@@ -57,6 +58,7 @@ const _validatePluginUserData = createValidate<PluginUserDataState>();
 const _validatePluginMetadata = createValidate<PluginMetaDataState>();
 const _validateSection = createValidate<SectionState>();
 const _validateLayer = createValidate<LayerState | undefined>();
+const _validateLayerLabel = createValidate<LayerLabelState | undefined>();
 
 /**
  * `Task.issueType` and `IssueProvider.issueProviderKey` are validated against the
@@ -198,6 +200,8 @@ export const appDataValidators: {
   // Not an entity check: a missing slice (pre-layers data) is valid.
   layer: <R>(d: R | LayerState | undefined) =>
     _wrapValidate(_validateLayer(d), d, false, 'layer'),
+  layerLabel: <R>(d: R | LayerLabelState | undefined) =>
+    _wrapValidate(_validateLayerLabel(d), d, false, 'layerLabel'),
 } as const;
 
 const logValidationFailure = <R>(

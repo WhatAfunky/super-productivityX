@@ -621,6 +621,7 @@ describe('ValidationService', () => {
         'BOARD',
         'SECTION',
         'LAYER',
+        'LAYER_LABEL',
         'REMINDER',
         'MIGRATION',
         'RECOVERY',
@@ -635,7 +636,7 @@ describe('ValidationService', () => {
     });
 
     it('should have exactly the expected number of entity types', () => {
-      expect(ALLOWED_ENTITY_TYPES.size).toBe(22);
+      expect(ALLOWED_ENTITY_TYPES.size).toBe(23);
     });
   });
 });

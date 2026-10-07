@@ -1,0 +1,95 @@
+:host {
+  display: block;
+  min-width: min(520px, 85vw);
+}
+
+.field {
+  min-width: 0;
+  padding: var(--s-half) var(--s);
+  border: 1px solid var(--divider-color);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-color);
+  font: inherit;
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+}
+
+.new-label {
+  display: flex;
+  gap: var(--s);
+  margin-bottom: var(--s2);
+
+  .field {
+    flex: 1;
+  }
+}
+
+.empty {
+  color: var(--text-color-muted);
+}
+
+.label-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.label-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s);
+  padding: var(--s) 0;
+  border-bottom: 1px solid var(--divider-color);
+}
+
+.label-main,
+.label-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s);
+}
+
+layer-label-pill {
+  max-width: 120px;
+}
+
+.label-name {
+  flex: 1;
+}
+
+.used-by {
+  color: var(--text-color-muted);
+  font-size: var(--font-size-sm);
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-half);
+  margin-inline-end: auto;
+}
+
+// Palette colours come from the label data (inline background), so only the
+// shape and the selection ring are styled here.
+.swatch {
+  width: var(--s3);
+  height: var(--s3);
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+
+  &.isActive {
+    border-color: var(--text-color);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+}

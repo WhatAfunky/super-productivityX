@@ -152,6 +152,11 @@ export enum ActionType {
   LAYER_UPDATE = '[Layer] Update Layer',
   LAYER_DELETE = '[Layer] Delete Layer',
 
+  // LayerLabel actions (LL)
+  LAYER_LABEL_ADD = '[LayerLabel] Add LayerLabel',
+  LAYER_LABEL_UPDATE = '[LayerLabel] Update LayerLabel',
+  LAYER_LABEL_DELETE = '[LayerLabel] Delete LayerLabel',
+
   // SimpleCounter actions (S)
   COUNTER_ADD = '[SimpleCounter] Add SimpleCounter',
   COUNTER_UPDATE = '[SimpleCounter] Update SimpleCounter',

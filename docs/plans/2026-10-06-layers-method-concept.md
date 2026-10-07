@@ -191,7 +191,7 @@ Merging "Sound" into "SFX" sets `Sound.mergedIntoId = SFX` — a single-entity e
 
 - `LayerLabel` slice; pill component; label picker; By label view; chips filter; search.
 - Label manager: rename, recolor, merge (alias), delete.
-- Focus mode log strip (A2).
+- Focus mode: an **Add layer** button opening the shared Add layer dialog (decided 2026-10-06; replaces the inline strip from mockup A2, so there is one way to add a layer).
 - Offer to log a layer when a goal is completed: a small non-blocking action, not a dialog.
 
 **v2 — method and polish**
@@ -258,3 +258,15 @@ What shipped on `feat/layers-v0`, and where it differs from the plan above:
 - **Not in v0, as planned:** labels, the focus-mode strip, search, vision and anchor.
 - **Added after v0, before v1 — Add layer dialog:** the inline add bar is replaced by an **Add layer** button next to **Add folder**. It opens a dialog with a name field and a folder picker, defaulting to the selected layer's folder (or "No folder").
 - **Added after v0, before v1 — goals strip:** the Layers view shows the project's open goals/tasks above the add bar, with a done checkbox and nothing else, so it doesn't become a second task list. A Hide/Show button collapses it. It starts shown, and the choice is remembered per device in localStorage (`SUP_LAYERS_GOALS_STRIP_HIDDEN`), never synced.
+
+## 13. v1 as built (2026-10-06)
+
+- **Data:** `LayerLabel` slice (entity `LAYER_LABEL`, op codes `LLA`/`LLU`/`LLD`): `id`, `projectId`, `name`, `color` (a palette key), `mergedIntoId?`. It is typed optional in the model config, like `layer`. `Layer.labelId?` is new and optional. Deleting a project removes its labels in the same op.
+- **Merge = alias** (§7.4): `merge` sets `mergedIntoId` on the source label, one single-entity op, and no layer is rewritten. `resolveLayerLabel` follows the chain. A missing link (target deleted) resolves to "no label". A cycle from concurrent merges stops at the starting label, and both labels stay visible in the manager.
+- **Label look:** a left-edge colour strip on each row (Photoshop / Clip Studio Paint style) plus the osu!-style solid pill (`layer-label-pill`, the single place pills are styled). The palette is fixed (10 keys in `layer-label.util.ts`), so it can be retuned without touching data.
+- **Layers view:** By folder / **By label** / Timeline (text-only buttons so three fit), label filter chips with counts, and name search. While searching or filtering, every hit shows (no "newest 8" cap) and empty groups hide. A label picker sits in the preview, and **Labels…** opens the manager. Group headers use the shared `task-section` heading style.
+- **Label manager** (dialog): add (palette colour auto-picked), rename, recolour, merge into… (confirmed), delete (confirmed: "its N layers become unlabeled"), and a "used by N layers" count per label.
+- **Add layer dialog:** gains a Label picker. From the Layers view, folder and label default to the selected layer's; from focus mode or the snack, to the project's newest layer's.
+- **Focus mode:** an **Add layer** icon button (and an entry in the small-screen menu) while a session runs, shown only for Layers projects. `LayerService` is resolved on click, so focus mode takes on no new start-up dependencies.
+- **Goal-done snack:** `LayerUiEffects.offerLayerOnGoalDone$` listens to `LOCAL_ACTIONS` only (remote and replayed completions never prompt). It fires for top-level goals in Layers projects, not for bulk "mark done", and shows "Done. Did something new come to exist?" with a **Name the layer** button that opens the dialog.
+- **Verified:** Angular suite 16,871 passing (2 skipped, cold cache), layer specs 47, shared-schema 95, server validation spec 61. Every flow above was also exercised in the browser.

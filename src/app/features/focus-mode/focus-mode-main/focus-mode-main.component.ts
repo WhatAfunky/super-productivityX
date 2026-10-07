@@ -7,6 +7,7 @@ import {
   effect,
   HostListener,
   inject,
+  Injector,
   signal,
 } from '@angular/core';
 import { Log } from '../../../core/log';
@@ -81,6 +82,9 @@ import {
   MatMenuTrigger,
 } from '@angular/material/menu';
 import { LayoutService } from '../../../core-ui/layout/layout.service';
+import { LayerService } from '../../layer/layer.service';
+import { IS_LAYERS_PLATFORM_SUPPORTED } from '../../layer/layer.util';
+import { selectProjectFeatureState } from '../../project/store/project.selectors';
 
 @Component({
   selector: 'focus-mode-main',
@@ -305,6 +309,27 @@ export class FocusModeMainComponent {
   });
 
   isFocusNotes = signal(false);
+
+  private readonly _injector = inject(Injector);
+  private readonly _projectState = this._store.selectSignal(selectProjectFeatureState);
+  /** The focused goal/task belongs to a project with Layers on. */
+  readonly isLayersProject = computed(() => {
+    const projectId = this.displayedTask()?.projectId;
+    return (
+      IS_LAYERS_PLATFORM_SUPPORTED &&
+      !!projectId &&
+      !!this._projectState()?.entities[projectId]?.isLayersEnabled
+    );
+  });
+
+  addLayer(): void {
+    const projectId = this.displayedTask()?.projectId;
+    if (projectId) {
+      // Resolved on use, so focus mode takes on no Layers dependencies at
+      // start-up (it is shown for every project, most without Layers).
+      void this._injector.get(LayerService).openAddLayerDialog(projectId);
+    }
+  }
   isDragOver = signal(false);
   defaultTaskNotes = signal('');
   T: typeof T = T;

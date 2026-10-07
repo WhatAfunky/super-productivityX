@@ -328,6 +328,18 @@
           </a>
         }
 
+        @if (isLayersProject()) {
+          <button
+            mat-icon-button
+            class="add-layer-btn"
+            [matTooltip]="T.F.LAYER.ADD | translate"
+            [attr.aria-label]="T.F.LAYER.ADD | translate"
+            (click)="addLayer()"
+          >
+            <mat-icon>layers</mat-icon>
+          </button>
+        }
+
         @if (displayed) {
           <button
             mat-icon-button
@@ -371,6 +383,16 @@
         <mat-icon [svgIcon]="displayed.issueType | issueIcon"></mat-icon>
         <span>{{ T.F.FOCUS_MODE.OPEN_ISSUE_IN_BROWSER | translate }}</span>
       </a>
+    }
+
+    @if (isLayersProject()) {
+      <button
+        mat-menu-item
+        (click)="addLayer()"
+      >
+        <mat-icon>layers</mat-icon>
+        <span>{{ T.F.LAYER.ADD | translate }}</span>
+      </button>
     }
 
     @if (displayed) {

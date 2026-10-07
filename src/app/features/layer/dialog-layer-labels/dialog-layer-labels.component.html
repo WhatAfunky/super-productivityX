@@ -1,0 +1,107 @@
+<h1 mat-dialog-title>{{ T.F.LAYER.LABELS.TITLE | translate }}</h1>
+
+<mat-dialog-content>
+  <form
+    class="new-label"
+    (submit)="$event.preventDefault(); addLabel(newName)"
+  >
+    <input
+      #newName
+      class="field"
+      type="text"
+      [attr.maxlength]="MAX_NAME_LENGTH"
+      [placeholder]="T.F.LAYER.LABELS.NEW_PLACEHOLDER | translate"
+      [attr.aria-label]="T.F.LAYER.LABELS.NEW_PLACEHOLDER | translate"
+    />
+    <button
+      mat-flat-button
+      color="primary"
+      type="submit"
+    >
+      {{ T.F.LAYER.LABELS.ADD | translate }}
+    </button>
+  </form>
+
+  @if (!rows().length) {
+    <p class="empty">{{ T.F.LAYER.LABELS.EMPTY | translate }}</p>
+  }
+
+  <ul class="label-list">
+    @for (row of rows(); track row.label.id) {
+      <li class="label-row">
+        <div class="label-main">
+          <layer-label-pill [label]="row.label"></layer-label-pill>
+          <input
+            class="field label-name"
+            type="text"
+            [value]="row.label.name"
+            [attr.maxlength]="MAX_NAME_LENGTH"
+            [attr.aria-label]="T.F.LAYER.LABELS.NAME | translate"
+            (change)="rename(row.label, $event)"
+            (keydown.enter)="$any($event.target).blur()"
+          />
+          <span class="used-by">{{
+            T.F.LAYER.LABELS.USED_BY | translate: { nr: row.usedBy }
+          }}</span>
+        </div>
+        <div class="label-tools">
+          <div
+            class="swatches"
+            role="group"
+            [attr.aria-label]="T.F.LAYER.LABELS.COLOR_GROUP | translate"
+          >
+            @for (swatch of swatches; track swatch.key) {
+              <button
+                type="button"
+                class="swatch"
+                [class.isActive]="swatch.key === row.label.color"
+                [style.background-color]="swatch.hex"
+                [attr.aria-pressed]="swatch.key === row.label.color"
+                [attr.aria-label]="
+                  T.F.LAYER.LABELS.COLOR | translate: { color: swatch.key }
+                "
+                (click)="recolor(row.label, swatch.key)"
+              ></button>
+            }
+          </div>
+          @if (row.mergeTargets.length) {
+            <select
+              class="field"
+              [attr.aria-label]="T.F.LAYER.LABELS.MERGE_INTO | translate"
+              (change)="merge(row, $event)"
+            >
+              <option
+                value=""
+                selected
+              >
+                {{ T.F.LAYER.LABELS.MERGE_INTO | translate }}
+              </option>
+              @for (target of row.mergeTargets; track target.id) {
+                <option [value]="target.id">{{ target.name }}</option>
+              }
+            </select>
+          }
+          <button
+            mat-icon-button
+            type="button"
+            [matTooltip]="T.F.LAYER.LABELS.DELETE | translate"
+            [attr.aria-label]="T.F.LAYER.LABELS.DELETE | translate"
+            (click)="delete(row)"
+          >
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      </li>
+    }
+  </ul>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button
+    mat-button
+    type="button"
+    (click)="close()"
+  >
+    {{ T.G.CLOSE | translate }}
+  </button>
+</mat-dialog-actions>

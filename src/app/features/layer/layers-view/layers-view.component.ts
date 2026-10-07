@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { Store } from '@ngrx/store';
 import { switchMap } from 'rxjs/operators';
 import { firstValueFrom } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
@@ -20,12 +21,21 @@ import { MatTooltip } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Project } from '../../project/project.model';
 import { Layer } from '../layer.model';
+import { LayerLabel } from '../layer-label.model';
 import { LayerService } from '../layer.service';
+import { LayerLabelService } from '../layer-label.service';
+import { selectLayerLabelEntities } from '../store/layer-label.selectors';
+import { getLayerLabelColor, resolveLayerLabel } from '../layer-label.util';
 import { SectionService } from '../../section/section.service';
 import { Section } from '../../section/section.model';
 import { WorkContextType } from '../../work-context/work-context.model';
 import { getImageFromDataTransfer, MAX_LAYER_TITLE_LENGTH } from '../layer.util';
 import { LayerImageComponent } from '../layer-image/layer-image.component';
+import { LayerLabelPillComponent } from '../layer-label-pill/layer-label-pill.component';
+import {
+  DialogLayerLabelsComponent,
+  DialogLayerLabelsData,
+} from '../dialog-layer-labels/dialog-layer-labels.component';
 import { CollapsibleComponent } from '../../../ui/collapsible/collapsible.component';
 import {
   SegmentedButtonGroupComponent,
@@ -33,11 +43,6 @@ import {
 } from '../../../ui/segmented-button-group/segmented-button-group.component';
 import { DialogPromptComponent } from '../../../ui/dialog-prompt/dialog-prompt.component';
 import { DialogConfirmComponent } from '../../../ui/dialog-confirm/dialog-confirm.component';
-import {
-  DialogAddLayerComponent,
-  DialogAddLayerData,
-  DialogAddLayerResult,
-} from '../dialog-add-layer/dialog-add-layer.component';
 import { LocaleDatePipe } from '../../../ui/pipes/locale-date.pipe';
 import { DoneToggleComponent } from '../../../ui/done-toggle/done-toggle.component';
 import { WorkContextService } from '../../work-context/work-context.service';
@@ -46,25 +51,42 @@ import { TaskWithSubTasks } from '../../tasks/task.model';
 import { LS } from '../../../core/persistence/storage-keys.const';
 import { T } from '../../../t.const';
 
-type LayerViewMode = 'folder' | 'time';
+type LayerViewMode = 'folder' | 'label' | 'time';
+
+/** A layer with its resolved label, precomputed so the template calls nothing. */
+interface LayerRow {
+  layer: Layer;
+  label: LayerLabel | null;
+  /** Hex for the row's left-edge strip, or null without a label. */
+  labelColor: string | null;
+}
 
 interface LayerGroup {
   key: string;
-  /** Section title; empty for the unfiled group (translated in the template). */
+  /** Section title; empty for unfiled / timeline (translated in the template). */
   title: string;
-  isUnfiled: boolean;
+  /** Set when grouping by label: the group header shows the pill. */
+  label: LayerLabel | null;
+  isFallbackGroup: boolean;
   isExpanded: boolean;
   total: number;
-  shown: readonly Layer[];
+  shown: readonly LayerRow[];
   hiddenCount: number;
+}
+
+interface LabelChip {
+  label: LayerLabel;
+  count: number;
+  isActive: boolean;
 }
 
 /** Each group shows only its newest layers until "show older" is clicked. */
 export const NEWEST_LAYERS_SHOWN = 8;
-const UNFILED_KEY = '__unfiled__';
+const FALLBACK_KEY = '__none__';
 const TIMELINE_KEY = '__timeline__';
 const EMPTY_SECTIONS: readonly Section[] = [];
 const EMPTY_LAYERS: readonly Layer[] = [];
+const EMPTY_LABELS: readonly LayerLabel[] = [];
 const EMPTY_GOALS: TaskWithSubTasks[] = [];
 
 // The goals strip's shown/hidden state is a per-device view preference, so it
@@ -98,6 +120,7 @@ const writeIsGoalsStripHidden = (isHidden: boolean): void => {
     CollapsibleComponent,
     SegmentedButtonGroupComponent,
     LayerImageComponent,
+    LayerLabelPillComponent,
     DoneToggleComponent,
     LocaleDatePipe,
     TranslatePipe,
@@ -111,7 +134,9 @@ const writeIsGoalsStripHidden = (isHidden: boolean): void => {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LayersViewComponent {
+  private _store = inject(Store);
   private _layerService = inject(LayerService);
+  private _layerLabelService = inject(LayerLabelService);
   private _sectionService = inject(SectionService);
   private _matDialog = inject(MatDialog);
   private _workContextService = inject(WorkContextService);
@@ -122,8 +147,10 @@ export class LayersViewComponent {
   readonly T = T;
   readonly MAX_TITLE_LENGTH = MAX_LAYER_TITLE_LENGTH;
   readonly viewModeOptions: readonly SegmentedButtonOption[] = [
-    { id: 'folder', labelKey: T.F.LAYER.VIEW_BY_FOLDER, icon: 'folder' },
-    { id: 'time', labelKey: T.F.LAYER.VIEW_TIMELINE, icon: 'timeline' },
+    // Text only: three options with icons don't fit the list pane's width.
+    { id: 'folder', labelKey: T.F.LAYER.VIEW_BY_FOLDER },
+    { id: 'label', labelKey: T.F.LAYER.VIEW_BY_LABEL },
+    { id: 'time', labelKey: T.F.LAYER.VIEW_TIMELINE },
   ];
 
   private readonly _fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
@@ -144,6 +171,16 @@ export class LayersViewComponent {
     { initialValue: EMPTY_SECTIONS },
   );
 
+  /** Labels a user can pick (merged-away ones excluded), sorted by name. */
+  readonly labels = toSignal(
+    this._projectId$.pipe(
+      switchMap((id) => this._layerLabelService.getVisibleLabelsByProjectId$(id)),
+    ),
+    { initialValue: EMPTY_LABELS },
+  );
+
+  private readonly _labelEntities = this._store.selectSignal(selectLayerLabelEntities);
+
   /**
    * Open goals/tasks of the project, read-only apart from completing them.
    * The Layers page is a project child route, so the active work context is
@@ -156,28 +193,69 @@ export class LayersViewComponent {
 
   readonly viewMode = signal<LayerViewMode>('folder');
   readonly selectedId = signal<string | null>(null);
+  readonly searchText = signal('');
+  private readonly _labelFilter = signal<ReadonlySet<string>>(new Set());
   private readonly _showAllKeys = signal<ReadonlySet<string>>(new Set());
   private readonly _collapsedKeys = signal<ReadonlySet<string>>(new Set());
 
-  readonly selectedLayer = computed(
-    () => this.layers().find((l) => l.id === this.selectedId()) ?? null,
+  /** Every layer with its resolved label (merges followed, deleted → none). */
+  private readonly _rows = computed<LayerRow[]>(() => {
+    const entities = this._labelEntities();
+    return this.layers().map((layer) => {
+      const label = resolveLayerLabel(layer.labelId, entities);
+      return { layer, label, labelColor: label ? getLayerLabelColor(label.color) : null };
+    });
+  });
+
+  readonly selectedRow = computed(
+    () => this._rows().find((r) => r.layer.id === this.selectedId()) ?? null,
+  );
+  readonly selectedLayer = computed(() => this.selectedRow()?.layer ?? null);
+
+  readonly isFiltering = computed(
+    () => !!this.searchText().trim() || this._labelFilter().size > 0,
   );
 
+  private readonly _visibleRows = computed<LayerRow[]>(() => {
+    const query = this.searchText().trim().toLowerCase();
+    const filter = this._labelFilter();
+    return this._rows().filter(
+      (r) =>
+        (!query || r.layer.title.toLowerCase().includes(query)) &&
+        (!filter.size || (!!r.label && filter.has(r.label.id))),
+    );
+  });
+
+  readonly labelChips = computed<LabelChip[]>(() => {
+    const counts = new Map<string, number>();
+    for (const r of this._rows()) {
+      if (r.label) counts.set(r.label.id, (counts.get(r.label.id) ?? 0) + 1);
+    }
+    const filter = this._labelFilter();
+    return this.labels().map((label) => ({
+      label,
+      count: counts.get(label.id) ?? 0,
+      isActive: filter.has(label.id),
+    }));
+  });
+
   readonly groups = computed<LayerGroup[]>(() => {
-    const layers = this.layers();
+    const rows = this._visibleRows();
     const showAll = this._showAllKeys();
     const collapsed = this._collapsedKeys();
+    // While searching or filtering, show every hit instead of the newest 8.
+    const isFiltering = this.isFiltering();
     const makeGroup = (
       key: string,
-      title: string,
-      list: readonly Layer[],
-      isUnfiled = false,
+      list: readonly LayerRow[],
+      opts: { title?: string; label?: LayerLabel; isFallbackGroup?: boolean } = {},
     ): LayerGroup => {
-      const isShowAll = showAll.has(key);
+      const isShowAll = isFiltering || showAll.has(key);
       return {
         key,
-        title,
-        isUnfiled,
+        title: opts.title ?? '',
+        label: opts.label ?? null,
+        isFallbackGroup: !!opts.isFallbackGroup,
         isExpanded: !collapsed.has(key),
         total: list.length,
         shown: isShowAll ? list : list.slice(0, NEWEST_LAYERS_SHOWN),
@@ -185,27 +263,44 @@ export class LayersViewComponent {
       };
     };
 
-    if (this.viewMode() === 'time') {
-      return [makeGroup(TIMELINE_KEY, '', layers)];
+    const mode = this.viewMode();
+    if (mode === 'time') {
+      return [makeGroup(TIMELINE_KEY, rows)];
     }
 
-    // Layers arrive newest first, so each bucket stays newest first.
-    const sections = this.sections();
-    const bySection = new Map<string, Layer[]>(sections.map((s) => [s.id, []]));
-    const unfiled: Layer[] = [];
-    for (const layer of layers) {
-      const bucket = layer.sectionId ? bySection.get(layer.sectionId) : undefined;
+    // Rows arrive newest first, so each bucket stays newest first.
+    const buckets = new Map<string, LayerRow[]>();
+    const fallback: LayerRow[] = [];
+    const keyOf =
+      mode === 'label'
+        ? (r: LayerRow): string | null => r.label?.id ?? null
+        : (r: LayerRow): string | null => r.layer.sectionId ?? null;
+    const known =
+      mode === 'label'
+        ? this.labels().map((l) => l.id)
+        : this.sections().map((s) => s.id);
+    for (const id of known) buckets.set(id, []);
+    for (const r of rows) {
+      const k = keyOf(r);
+      const bucket = k ? buckets.get(k) : undefined;
       if (bucket) {
-        bucket.push(layer);
+        bucket.push(r);
       } else {
-        unfiled.push(layer);
+        fallback.push(r);
       }
     }
-    const groups = sections.map((s) => makeGroup(s.id, s.title, bySection.get(s.id)!));
-    if (unfiled.length) {
-      groups.push(makeGroup(UNFILED_KEY, '', unfiled, true));
+
+    const isHidingEmpty = isFiltering;
+    const groups =
+      mode === 'label'
+        ? this.labels().map((l) => makeGroup(l.id, buckets.get(l.id)!, { label: l }))
+        : this.sections().map((s) =>
+            makeGroup(s.id, buckets.get(s.id)!, { title: s.title }),
+          );
+    if (fallback.length) {
+      groups.push(makeGroup(FALLBACK_KEY, fallback, { isFallbackGroup: true }));
     }
-    return groups;
+    return isHidingEmpty ? groups.filter((g) => g.total > 0) : groups;
   });
 
   toggleGoals(): void {
@@ -219,7 +314,27 @@ export class LayersViewComponent {
   }
 
   setViewMode(id: string | number): void {
-    this.viewMode.set(id === 'time' ? 'time' : 'folder');
+    this.viewMode.set(id === 'time' || id === 'label' ? id : 'folder');
+  }
+
+  setSearchText(ev: Event): void {
+    this.searchText.set((ev.target as HTMLInputElement).value);
+  }
+
+  toggleLabelFilter(labelId: string): void {
+    this._labelFilter.update((ids) => {
+      const next = new Set(ids);
+      if (next.has(labelId)) {
+        next.delete(labelId);
+      } else {
+        next.add(labelId);
+      }
+      return next;
+    });
+  }
+
+  clearLabelFilter(): void {
+    this._labelFilter.set(new Set());
   }
 
   setGroupExpanded(key: string, isExpanded: boolean): void {
@@ -242,28 +357,13 @@ export class LayersViewComponent {
     this.selectedId.set(layer.id);
   }
 
-  /** The new layer's folder defaults to the selected layer's folder. */
+  /** Folder and label default to the selected layer's (none if nothing selected). */
   async addLayer(): Promise<void> {
-    const result = await firstValueFrom(
-      this._matDialog
-        .open<DialogAddLayerComponent, DialogAddLayerData, DialogAddLayerResult>(
-          DialogAddLayerComponent,
-          {
-            restoreFocus: true,
-            data: {
-              sections: this.sections(),
-              defaultSectionId: this.selectedLayer()?.sectionId ?? null,
-            },
-          },
-        )
-        .afterClosed(),
-    );
-    if (!result) return;
-    const id = this._layerService.addLayer(
-      this.project().id,
-      result.title,
-      result.sectionId,
-    );
+    const row = this.selectedRow();
+    const id = await this._layerService.openAddLayerDialog(this.project().id, {
+      sectionId: row?.layer.sectionId ?? null,
+      labelId: row?.label?.id ?? null,
+    });
     if (id) {
       this.selectedId.set(id);
     }
@@ -283,6 +383,13 @@ export class LayersViewComponent {
     }
   }
 
+  openLabelManager(): void {
+    this._matDialog.open<DialogLayerLabelsComponent, DialogLayerLabelsData>(
+      DialogLayerLabelsComponent,
+      { restoreFocus: true, data: { projectId: this.project().id } },
+    );
+  }
+
   rename(layer: Layer, ev: Event): void {
     const inputEl = ev.target as HTMLInputElement;
     const title = inputEl.value.trim();
@@ -300,6 +407,13 @@ export class LayersViewComponent {
     const sectionId = (ev.target as HTMLSelectElement).value || null;
     if (sectionId !== (layer.sectionId ?? null)) {
       this._layerService.updateLayer(layer.id, { sectionId });
+    }
+  }
+
+  setLabel(row: LayerRow, ev: Event): void {
+    const labelId = (ev.target as HTMLSelectElement).value || null;
+    if (labelId !== (row.label?.id ?? null)) {
+      this._layerService.updateLayer(row.layer.id, { labelId });
     }
   }
 

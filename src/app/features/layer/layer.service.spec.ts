@@ -6,6 +6,14 @@ import { addLayer, deleteLayer, updateLayer } from './store/layer.actions';
 import { ClipboardImageService } from '../../core/clipboard-image/clipboard-image.service';
 import { SnackService } from '../../core/snack/snack.service';
 import { isValidLayerImageId } from './layer.util';
+import { MatDialog } from '@angular/material/dialog';
+import { of } from 'rxjs';
+import { SectionService } from '../section/section.service';
+import { LayerLabelService } from './layer-label.service';
+import { selectLayersByProjectIdMap } from './store/layer.selectors';
+import { selectLayerLabelEntities } from './store/layer-label.selectors';
+import { DialogAddLayerData } from './dialog-add-layer/dialog-add-layer.component';
+import { LayerLabel } from './layer-label.model';
 
 describe('LayerService', () => {
   let service: LayerService;
@@ -13,6 +21,7 @@ describe('LayerService', () => {
   let dispatchSpy: jasmine.Spy;
   let images: jasmine.SpyObj<ClipboardImageService>;
   let snack: jasmine.SpyObj<SnackService>;
+  let dialog: jasmine.SpyObj<MatDialog>;
 
   const layer = (overrides: Partial<Layer> = {}): Layer => ({
     id: 'l1',
@@ -32,12 +41,22 @@ describe('LayerService', () => {
     ]);
     images.deleteImage.and.resolveTo(true);
     snack = jasmine.createSpyObj<SnackService>('SnackService', ['open']);
+    dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
     TestBed.configureTestingModule({
       providers: [
         LayerService,
         provideMockStore(),
         { provide: ClipboardImageService, useValue: images },
         { provide: SnackService, useValue: snack },
+        { provide: MatDialog, useValue: dialog },
+        {
+          provide: SectionService,
+          useValue: { getSectionsByContextId$: () => of([{ id: 's1' }, { id: 's2' }]) },
+        },
+        {
+          provide: LayerLabelService,
+          useValue: { getVisibleLabelsByProjectId$: () => of([{ id: 'code' }]) },
+        },
       ],
     });
     service = TestBed.inject(LayerService);
@@ -98,6 +117,67 @@ describe('LayerService', () => {
       expect(dispatchSpy).not.toHaveBeenCalled();
       expect(images.deleteImage).not.toHaveBeenCalled();
       expect(snack.open).toHaveBeenCalled();
+    });
+  });
+
+  describe('openAddLayerDialog', () => {
+    const labels: Record<string, LayerLabel> = {
+      code: { id: 'code', projectId: 'p1', name: 'Code', color: 'blue' },
+      sound: {
+        id: 'sound',
+        projectId: 'p1',
+        name: 'Sound',
+        color: 'red',
+        mergedIntoId: 'code',
+      },
+    };
+    const openWith = (result: unknown): void => {
+      dialog.open.and.returnValue({ afterClosed: () => of(result) } as never);
+    };
+    const dialogData = (): DialogAddLayerData =>
+      dialog.open.calls.mostRecent().args[1]!.data as DialogAddLayerData;
+
+    beforeEach(() => {
+      store.overrideSelector(
+        selectLayersByProjectIdMap,
+        new Map([['p1', [layer({ id: 'newest', sectionId: 's2', labelId: 'sound' })]]]),
+      );
+      store.overrideSelector(selectLayerLabelEntities, labels);
+    });
+
+    it("defaults to the newest layer's folder and resolved label", async () => {
+      openWith(undefined);
+      await service.openAddLayerDialog('p1');
+      expect(dialogData().defaultSectionId).toBe('s2');
+      expect(dialogData().defaultLabelId).toBe('code');
+    });
+
+    it('uses explicit defaults when given', async () => {
+      openWith(undefined);
+      await service.openAddLayerDialog('p1', { sectionId: null, labelId: null });
+      expect(dialogData().defaultSectionId).toBeNull();
+      expect(dialogData().defaultLabelId).toBeNull();
+    });
+
+    it('adds the layer from the dialog result, and nothing when cancelled', async () => {
+      openWith({ title: 'Dash works', sectionId: 's1', labelId: 'code' });
+      const id = await service.openAddLayerDialog('p1');
+      const action = dispatchSpy.calls.mostRecent().args[0] as ReturnType<
+        typeof addLayer
+      >;
+      expect(action.layer).toEqual(
+        jasmine.objectContaining({
+          id: id!,
+          title: 'Dash works',
+          sectionId: 's1',
+          labelId: 'code',
+        }),
+      );
+
+      dispatchSpy.calls.reset();
+      openWith(undefined);
+      expect(await service.openAddLayerDialog('p1')).toBeNull();
+      expect(dispatchSpy).not.toHaveBeenCalled();
     });
   });
 

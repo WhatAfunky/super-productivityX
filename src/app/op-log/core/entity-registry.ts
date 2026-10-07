@@ -98,6 +98,11 @@ import {
   adapter as layerAdapter,
   selectEntities as selectLayerEntitiesFromAdapter,
 } from '../../features/layer/store/layer.reducer';
+import {
+  LAYER_LABEL_FEATURE_NAME,
+  adapter as layerLabelAdapter,
+  selectEntities as selectLayerLabelEntitiesFromAdapter,
+} from '../../features/layer/store/layer-label.reducer';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // IMPORTS - Selectors
@@ -158,6 +163,10 @@ import {
   selectLayerById,
   selectLayerFeatureState,
 } from '../../features/layer/store/layer.selectors';
+import {
+  selectLayerLabelById,
+  selectLayerLabelFeatureState,
+} from '../../features/layer/store/layer-label.selectors';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ENTITY CONFIGS
@@ -286,6 +295,18 @@ export const buildEntityRegistry = (): EntityRegistry<EntityType> =>
         selectLayerEntitiesFromAdapter,
       ),
       selectById: selectLayerById,
+    },
+
+    LAYER_LABEL: {
+      storagePattern: 'adapter',
+      featureName: LAYER_LABEL_FEATURE_NAME,
+      payloadKey: 'layerLabel',
+      adapter: layerLabelAdapter,
+      selectEntities: createSelector(
+        selectLayerLabelFeatureState,
+        selectLayerLabelEntitiesFromAdapter,
+      ),
+      selectById: selectLayerLabelById,
     },
 
     // ── SINGLETON ENTITIES ─────────────────────────────────────────────────────

@@ -23,6 +23,7 @@ export interface AppStateSnapshot {
   reminders: unknown;
   section: unknown;
   layer?: unknown;
+  layerLabel?: unknown;
   archiveYoung: ArchiveModel;
   archiveOld: ArchiveModel;
 }

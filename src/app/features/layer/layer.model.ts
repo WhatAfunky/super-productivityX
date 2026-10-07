@@ -17,6 +17,8 @@ export interface Layer {
   createdAt: number;
   /** Folder = a section of the same project. Missing or dangling → unfiled. */
   sectionId?: string | null;
+  /** One label (LayerLabel of the same project). Missing or dangling → none. */
+  labelId?: string | null;
   /**
    * Opaque id of a device-local screenshot (ClipboardImageService storage).
    * Never a path or URL, so a synced layer leaks nothing about the machine

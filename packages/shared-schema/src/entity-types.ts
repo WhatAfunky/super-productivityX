@@ -29,6 +29,7 @@ export const ENTITY_TYPES = [
   'BOARD',
   'SECTION',
   'LAYER',
+  'LAYER_LABEL',
   'REMINDER',
   'PLUGIN_USER_DATA',
   'PLUGIN_METADATA',

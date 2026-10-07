@@ -66,10 +66,61 @@
         <mat-icon>create_new_folder</mat-icon>
         {{ T.F.LAYER.ADD_FOLDER | translate }}
       </button>
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="openLabelManager()"
+      >
+        <mat-icon>label</mat-icon>
+        {{ T.F.LAYER.MANAGE_LABELS | translate }}
+      </button>
     </div>
+
+    @if (layers().length) {
+      <input
+        class="field search"
+        type="search"
+        [value]="searchText()"
+        [placeholder]="T.F.LAYER.SEARCH | translate"
+        [attr.aria-label]="T.F.LAYER.SEARCH | translate"
+        (input)="setSearchText($event)"
+      />
+    }
+
+    @if (labelChips().length) {
+      <div
+        class="label-chips"
+        role="group"
+        [attr.aria-label]="T.F.LAYER.LABEL | translate"
+      >
+        @for (chip of labelChips(); track chip.label.id) {
+          <button
+            type="button"
+            class="label-chip"
+            [class.isActive]="chip.isActive"
+            [attr.aria-pressed]="chip.isActive"
+            (click)="toggleLabelFilter(chip.label.id)"
+          >
+            <layer-label-pill [label]="chip.label"></layer-label-pill>
+            <span class="chip-count">{{ chip.count }}</span>
+          </button>
+        }
+        @if (isFiltering()) {
+          <button
+            mat-button
+            type="button"
+            (click)="clearLabelFilter()"
+          >
+            {{ T.F.LAYER.SHOW_ALL_LABELS | translate }}
+          </button>
+        }
+      </div>
+    }
 
     @if (!layers().length) {
       <p class="empty">{{ T.F.LAYER.EMPTY | translate }}</p>
+    } @else if (isFiltering() && !groups()[0]?.total) {
+      <p class="empty">{{ T.F.LAYER.NO_MATCH | translate }}</p>
     }
 
     @if (viewMode() === 'time') {
@@ -82,17 +133,26 @@
     } @else {
       @for (group of groups(); track group.key) {
         <collapsible
-          class="layer-group"
-          [title]="group.isUnfiled ? (T.F.LAYER.UNFILED | translate) : group.title"
+          class="layer-group task-section"
+          [title]="
+            group.isFallbackGroup
+              ? ((viewMode() === 'label' ? T.F.LAYER.NO_LABEL : T.F.LAYER.UNFILED)
+                | translate)
+              : group.title
+          "
           [isExpanded]="group.isExpanded"
           [isIconBefore]="true"
           (isExpandedChange)="setGroupExpanded(group.key, $event)"
         >
           <span
             actions
-            class="group-count"
-            >{{ group.total || '' }}</span
+            class="group-actions"
           >
+            @if (group.label) {
+              <layer-label-pill [label]="group.label"></layer-label-pill>
+            }
+            <span class="group-count">{{ group.total || '' }}</span>
+          </span>
           <ng-container
             [ngTemplateOutlet]="rows"
             [ngTemplateOutletContext]="{ $implicit: group }"
@@ -103,7 +163,8 @@
   </section>
 
   <section class="preview-pane">
-    @if (selectedLayer(); as layer) {
+    @if (selectedRow(); as row) {
+      @let layer = row.layer;
       <div class="preview-head">
         <input
           class="field preview-title"
@@ -144,6 +205,31 @@
                 [selected]="section.id === layer.sectionId"
               >
                 {{ section.title }}
+              </option>
+            }
+          </select>
+        </label>
+        <label class="folder-label">
+          {{ T.F.LAYER.LABEL | translate }}
+          @if (row.label) {
+            <layer-label-pill [label]="row.label"></layer-label-pill>
+          }
+          <select
+            class="field"
+            (change)="setLabel(row, $event)"
+          >
+            <option
+              value=""
+              [selected]="!row.label"
+            >
+              {{ T.F.LAYER.NO_LABEL | translate }}
+            </option>
+            @for (label of labels(); track label.id) {
+              <option
+                [value]="label.id"
+                [selected]="label.id === row.label?.id"
+              >
+                {{ label.name }}
               </option>
             }
           </select>
@@ -202,23 +288,28 @@
   let-group
 >
   <ul class="layer-list">
-    @for (layer of group.shown; track layer.id) {
+    @for (row of group.shown; track row.layer.id) {
       <li>
         <button
           type="button"
           class="layer-row"
-          [class.isSelected]="layer.id === selectedId()"
-          (click)="select(layer)"
+          [class.hasLabel]="!!row.labelColor"
+          [class.isSelected]="row.layer.id === selectedId()"
+          [style.--layer-label-color]="row.labelColor"
+          (click)="select(row.layer)"
         >
           <layer-image
             class="thumb"
-            [imageId]="layer.imageId"
+            [imageId]="row.layer.imageId"
           ></layer-image>
           <span class="layer-text">
-            <span class="layer-title">{{ layer.title }}</span>
-            <span class="layer-meta">{{
-              layer.createdAt | localeDate: 'mediumDate'
-            }}</span>
+            <span class="layer-title">{{ row.layer.title }}</span>
+            <span class="layer-meta">
+              {{ row.layer.createdAt | localeDate: 'mediumDate' }}
+              @if (row.label && viewMode() !== 'label') {
+                <layer-label-pill [label]="row.label"></layer-label-pill>
+              }
+            </span>
           </span>
         </button>
       </li>

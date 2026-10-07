@@ -43,6 +43,7 @@ import { appStateFeatureKey } from '../../root-store/app-state/app-state.reducer
 import { getDbDateStr } from '../../util/get-db-date-str';
 import { initialSectionState } from '../../features/section/store/section.reducer';
 import { initialLayerState } from '../../features/layer/store/layer.reducer';
+import { initialLayerLabelState } from '../../features/layer/store/layer-label.reducer';
 
 /**
  * Creates a minimal valid AppDataComplete state.
@@ -91,6 +92,7 @@ export const createValidAppData = (
     },
     section: initialSectionState,
     layer: initialLayerState,
+    layerLabel: initialLayerLabelState,
     menuTree: {
       ...menuTreeInitialState,
       projectTree: [{ k: MenuTreeKind.PROJECT, id: 'INBOX' } as MenuTreeProjectNode],
@@ -338,6 +340,7 @@ export const rootStateToAppData = (
     pluginMetadata?: AppDataComplete['pluginMetadata'];
     section?: AppDataComplete['section'];
     layer?: AppDataComplete['layer'];
+    layerLabel?: AppDataComplete['layerLabel'];
   } = {},
 ): AppDataComplete => {
   return {
@@ -352,6 +355,7 @@ export const rootStateToAppData = (
     timeTracking: state[TIME_TRACKING_FEATURE_KEY],
     section: additionalData.section || initialSectionState,
     layer: additionalData.layer || initialLayerState,
+    layerLabel: additionalData.layerLabel || initialLayerLabelState,
     // These are either from additional data or defaults
     simpleCounter: additionalData.simpleCounter || initialSimpleCounterState,
     taskRepeatCfg: additionalData.taskRepeatCfg || initialTaskRepeatCfgState,

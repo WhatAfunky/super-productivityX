@@ -19,6 +19,7 @@ import { selectTaskFeatureState } from '../../features/tasks/store/task.selector
 import { selectTaskRepeatCfgFeatureState } from '../../features/task-repeat-cfg/store/task-repeat-cfg.selectors';
 import { selectSectionFeatureState } from '../../features/section/store/section.selectors';
 import { selectLayerFeatureState } from '../../features/layer/store/layer.selectors';
+import { selectLayerLabelFeatureState } from '../../features/layer/store/layer-label.selectors';
 import { selectTimeTrackingState } from '../../features/time-tracking/store/time-tracking.selectors';
 import { environment } from '../../../environments/environment';
 import { ArchiveModel } from '../../features/time-tracking/time-tracking.model';
@@ -72,6 +73,7 @@ const SNAPSHOT_SELECTORS: readonly {
   { key: 'reminders', selector: selectReminderFeatureState },
   { key: 'section', selector: selectSectionFeatureState },
   { key: 'layer', selector: selectLayerFeatureState },
+  { key: 'layerLabel', selector: selectLayerLabelFeatureState },
 ] as const;
 
 /**

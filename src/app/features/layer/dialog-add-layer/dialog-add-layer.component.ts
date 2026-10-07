@@ -13,18 +13,25 @@ import { MatOption, MatSelect } from '@angular/material/select';
 import { MatButton } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Section } from '../../section/section.model';
+import { LayerLabel } from '../layer-label.model';
+import { LayerLabelPillComponent } from '../layer-label-pill/layer-label-pill.component';
 import { MAX_LAYER_TITLE_LENGTH } from '../layer.util';
 import { T } from '../../../t.const';
 
 export interface DialogAddLayerData {
   sections: readonly Section[];
+  /** The project's visible labels. */
+  labels: readonly LayerLabel[];
   /** Pre-selected folder; null means "No folder". */
   defaultSectionId: string | null;
+  /** Pre-selected label; null means "No label". */
+  defaultLabelId: string | null;
 }
 
 export interface DialogAddLayerResult {
   title: string;
   sectionId: string | null;
+  labelId: string | null;
 }
 
 @Component({
@@ -42,6 +49,7 @@ export interface DialogAddLayerResult {
     MatOption,
     MatButton,
     TranslatePipe,
+    LayerLabelPillComponent,
   ],
   template: `
     <h1 mat-dialog-title>{{ T.F.LAYER.ADD | translate }}</h1>
@@ -68,11 +76,23 @@ export interface DialogAddLayerResult {
             name="sectionId"
             [(ngModel)]="sectionId"
           >
-            <mat-option [value]="NO_FOLDER">{{
-              T.F.LAYER.NO_FOLDER | translate
-            }}</mat-option>
+            <mat-option [value]="NONE">{{ T.F.LAYER.NO_FOLDER | translate }}</mat-option>
             @for (section of data.sections; track section.id) {
               <mat-option [value]="section.id">{{ section.title }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>{{ T.F.LAYER.LABEL | translate }}</mat-label>
+          <mat-select
+            name="labelId"
+            [(ngModel)]="labelId"
+          >
+            <mat-option [value]="NONE">{{ T.F.LAYER.NO_LABEL | translate }}</mat-option>
+            @for (label of data.labels; track label.id) {
+              <mat-option [value]="label.id">
+                <layer-label-pill [label]="label"></layer-label-pill>
+              </mat-option>
             }
           </mat-select>
         </mat-form-field>
@@ -114,24 +134,29 @@ export class DialogAddLayerComponent {
 
   readonly T = T;
   readonly MAX_TITLE_LENGTH = MAX_LAYER_TITLE_LENGTH;
-  // mat-select shows a null value as "nothing selected", so "No folder" is ''
-  // inside the dialog and null outside it.
-  readonly NO_FOLDER = '';
+  // mat-select shows a null value as "nothing selected", so "No folder" /
+  // "No label" are '' inside the dialog and null outside it.
+  readonly NONE = '';
   title = '';
-  // A default that no longer exists (folder deleted meanwhile) falls back to none.
-  sectionId: string =
-    this.data.defaultSectionId &&
-    this.data.sections.some((s) => s.id === this.data.defaultSectionId)
-      ? this.data.defaultSectionId
-      : this.NO_FOLDER;
+  // A default that no longer exists (deleted meanwhile) falls back to none.
+  sectionId: string = this._pickDefault(this.data.defaultSectionId, this.data.sections);
+  labelId: string = this._pickDefault(this.data.defaultLabelId, this.data.labels);
 
   submit(): void {
     const title = this.title.trim();
     if (!title) return;
-    this._matDialogRef.close({ title, sectionId: this.sectionId || null });
+    this._matDialogRef.close({
+      title,
+      sectionId: this.sectionId || null,
+      labelId: this.labelId || null,
+    });
   }
 
   cancel(): void {
     this._matDialogRef.close(undefined);
+  }
+
+  private _pickDefault(id: string | null, options: readonly { id: string }[]): string {
+    return id && options.some((o) => o.id === id) ? id : this.NONE;
   }
 }

@@ -125,8 +125,64 @@
   color: var(--text-color-muted);
 }
 
+// Takes (nearly) all free space after the title, which has flex-grow: 1 in the
+// shared collapsible styles: the title keeps just its text width (none for a
+// label group, whose pill then sits first) and the count goes to the right.
+.group-actions {
+  display: flex;
+  flex: 1000 1 auto;
+  align-items: center;
+  gap: var(--s);
+}
+
 .group-count {
   margin-inline-start: auto;
+  color: var(--text-color-muted);
+  font-size: var(--font-size-sm);
+}
+
+.search {
+  width: 100%;
+  margin-bottom: var(--s);
+}
+
+.label-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-half);
+  margin-bottom: var(--s);
+}
+
+// A chip is the label pill plus its count; inactive chips fade while a filter
+// is on, so the active selection reads at a glance.
+.label-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-half);
+  padding: var(--s-quarter) var(--s-half);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+
+  &.isActive {
+    border-color: var(--text-color);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+}
+
+.label-chips:has(.isActive) .label-chip:not(.isActive) {
+  opacity: 0.5;
+}
+
+.chip-count {
   color: var(--text-color-muted);
   font-size: var(--font-size-sm);
 }
@@ -152,12 +208,22 @@
   text-align: start;
   cursor: pointer;
 
+  // Left-edge colour strip like Photoshop / Clip Studio layer colour coding.
+  // The colour comes from the row's label (bound as --layer-label-color).
+  &.hasLabel {
+    border-inline-start: var(--s-half) solid var(--layer-label-color);
+  }
+
   &:hover {
     background: var(--state-hover);
   }
 
   &.isSelected {
     border-color: var(--c-primary);
+  }
+
+  &.isSelected.hasLabel {
+    border-inline-start-color: var(--layer-label-color);
   }
 
   &:focus-visible {
@@ -183,7 +249,9 @@
 }
 
 .layer-meta {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--s);
   color: var(--text-color-muted);
   font-size: var(--font-size-sm);
 }

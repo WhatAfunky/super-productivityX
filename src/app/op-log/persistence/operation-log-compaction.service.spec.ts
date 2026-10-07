@@ -1078,6 +1078,7 @@ describe('OperationLogCompactionService', () => {
         pluginMetadata: 'PLUGIN_METADATA',
         section: 'SECTION',
         layer: 'LAYER',
+        layerLabel: 'LAYER_LABEL',
       };
 
       const missingModels: string[] = [];
