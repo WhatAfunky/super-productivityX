@@ -201,6 +201,7 @@ Merging "Sound" into "SFX" sets `Sound.mergedIntoId = SFX` — a single-entity e
 - Export screenshots in timeline order.
 - Opt-in end-of-session "did something exist?" nudge.
 - The sync pass (§7.6).
+- **Layer groups** (requested 2026-10-06 after using v0): bundle related layers inside a folder. Placed after labels (v1) on purpose: "By label" may cover part of the need, and a group is a new persisted shape, so design it once we know which axis labels leave uncovered. Confirmed shape: like Photoshop / Clip Studio Paint layer groups — select several layers and bundle them into a named, collapsible group. Open: can groups nest, and can a layer be in only one group?
 
 **v3+**
 
@@ -236,7 +237,7 @@ Merging "Sound" into "SFX" sets `Sound.mergedIntoId = SFX` — a single-entity e
 ## 11. Open questions
 
 - **O1.** Sections now do double duty: they group tasks in the Tasks tab and layers in the Layers tab. If that is confusing in practice (a game's "This week" task section is not a layer folder), the alternative is separate layer folders — a third new slice. Revisit after using v0.
-- **O2.** Should the Tasks tab be called "Goals" in Layers-enabled projects? Default: no, to avoid wording churn.
+- **O2. Decided (2026-10-06):** in Layers-enabled projects only, tasks are called "Goals/Tasks" (header toggle "Show goals/tasks", add-bar placeholder "A goal/task title…", goals strip heading). Everywhere else, including Today, Planner and focus mode, they stay "tasks". The same item can therefore carry both names depending on the view.
 - **O3.** What exactly counts as "desktop" for gating — Electron only, or desktop browsers too? The clipboard-image path already works on web.
 - **O4.** Thumbnails: v0 can scale the stored image with CSS and lazy loading; if big screenshots make lists heavy, generate small thumbnails in v1.
 - **O5.** Copy labels from another project, for people who run several game projects. Later.
@@ -255,3 +256,5 @@ What shipped on `feat/layers-v0`, and where it differs from the plan above:
 - **Known caveat:** Settings → Clipboard images → "delete all" also deletes layer screenshots. The layers then show "No image on this device".
 - **Folders:** "Add folder" in the Layers view creates an ordinary project section, so it also shows in the Tasks tab (O1 still open).
 - **Not in v0, as planned:** labels, the focus-mode strip, search, vision and anchor.
+- **Added after v0, before v1 — Add layer dialog:** the inline add bar is replaced by an **Add layer** button next to **Add folder**. It opens a dialog with a name field and a folder picker, defaulting to the selected layer's folder (or "No folder").
+- **Added after v0, before v1 — goals strip:** the Layers view shows the project's open goals/tasks above the add bar, with a done checkbox and nothing else, so it doesn't become a second task list. A Hide/Show button collapses it. It starts shown, and the choice is remembered per device in localStorage (`SUP_LAYERS_GOALS_STRIP_HIDDEN`), never synced.

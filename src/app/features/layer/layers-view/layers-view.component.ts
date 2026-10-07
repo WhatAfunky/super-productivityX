@@ -33,7 +33,17 @@ import {
 } from '../../../ui/segmented-button-group/segmented-button-group.component';
 import { DialogPromptComponent } from '../../../ui/dialog-prompt/dialog-prompt.component';
 import { DialogConfirmComponent } from '../../../ui/dialog-confirm/dialog-confirm.component';
+import {
+  DialogAddLayerComponent,
+  DialogAddLayerData,
+  DialogAddLayerResult,
+} from '../dialog-add-layer/dialog-add-layer.component';
 import { LocaleDatePipe } from '../../../ui/pipes/locale-date.pipe';
+import { DoneToggleComponent } from '../../../ui/done-toggle/done-toggle.component';
+import { WorkContextService } from '../../work-context/work-context.service';
+import { TaskService } from '../../tasks/task.service';
+import { TaskWithSubTasks } from '../../tasks/task.model';
+import { LS } from '../../../core/persistence/storage-keys.const';
 import { T } from '../../../t.const';
 
 type LayerViewMode = 'folder' | 'time';
@@ -55,6 +65,30 @@ const UNFILED_KEY = '__unfiled__';
 const TIMELINE_KEY = '__timeline__';
 const EMPTY_SECTIONS: readonly Section[] = [];
 const EMPTY_LAYERS: readonly Layer[] = [];
+const EMPTY_GOALS: TaskWithSubTasks[] = [];
+
+// The goals strip's shown/hidden state is a per-device view preference, so it
+// lives in localStorage and never syncs. Storage can be unavailable (private
+// window, blocked site data): fall back to "shown" and don't remember.
+const readIsGoalsStripHidden = (): boolean => {
+  try {
+    return localStorage.getItem(LS.LAYERS_GOALS_STRIP_HIDDEN) === 'true';
+  } catch {
+    return false;
+  }
+};
+
+const writeIsGoalsStripHidden = (isHidden: boolean): void => {
+  try {
+    if (isHidden) {
+      localStorage.setItem(LS.LAYERS_GOALS_STRIP_HIDDEN, 'true');
+    } else {
+      localStorage.removeItem(LS.LAYERS_GOALS_STRIP_HIDDEN);
+    }
+  } catch {
+    // Not remembered this time; the strip still toggles.
+  }
+};
 
 @Component({
   selector: 'layers-view',
@@ -64,6 +98,7 @@ const EMPTY_LAYERS: readonly Layer[] = [];
     CollapsibleComponent,
     SegmentedButtonGroupComponent,
     LayerImageComponent,
+    DoneToggleComponent,
     LocaleDatePipe,
     TranslatePipe,
     MatButton,
@@ -79,6 +114,8 @@ export class LayersViewComponent {
   private _layerService = inject(LayerService);
   private _sectionService = inject(SectionService);
   private _matDialog = inject(MatDialog);
+  private _workContextService = inject(WorkContextService);
+  private _taskService = inject(TaskService);
 
   readonly project = input.required<Project>();
 
@@ -107,22 +144,24 @@ export class LayersViewComponent {
     { initialValue: EMPTY_SECTIONS },
   );
 
+  /**
+   * Open goals/tasks of the project, read-only apart from completing them.
+   * The Layers page is a project child route, so the active work context is
+   * this project.
+   */
+  readonly goals = toSignal(this._workContextService.undoneTasks$, {
+    initialValue: EMPTY_GOALS,
+  });
+  readonly isGoalsShown = signal(!readIsGoalsStripHidden());
+
   readonly viewMode = signal<LayerViewMode>('folder');
   readonly selectedId = signal<string | null>(null);
-  readonly newTitle = signal('');
-  private readonly _newSectionId = signal<string | null>(null);
   private readonly _showAllKeys = signal<ReadonlySet<string>>(new Set());
   private readonly _collapsedKeys = signal<ReadonlySet<string>>(new Set());
 
   readonly selectedLayer = computed(
     () => this.layers().find((l) => l.id === this.selectedId()) ?? null,
   );
-
-  /** The add bar's folder, dropped if that section has since been deleted. */
-  readonly newSectionId = computed(() => {
-    const id = this._newSectionId();
-    return id && this.sections().some((s) => s.id === id) ? id : null;
-  });
 
   readonly groups = computed<LayerGroup[]>(() => {
     const layers = this.layers();
@@ -169,6 +208,16 @@ export class LayersViewComponent {
     return groups;
   });
 
+  toggleGoals(): void {
+    const isShown = !this.isGoalsShown();
+    this.isGoalsShown.set(isShown);
+    writeIsGoalsStripHidden(!isShown);
+  }
+
+  completeGoal(goal: TaskWithSubTasks): void {
+    this._taskService.setDone(goal.id);
+  }
+
   setViewMode(id: string | number): void {
     this.viewMode.set(id === 'time' ? 'time' : 'folder');
   }
@@ -193,25 +242,29 @@ export class LayersViewComponent {
     this.selectedId.set(layer.id);
   }
 
-  setNewTitle(ev: Event): void {
-    this.newTitle.set((ev.target as HTMLInputElement).value);
-  }
-
-  setNewSectionId(ev: Event): void {
-    this._newSectionId.set((ev.target as HTMLSelectElement).value || null);
-  }
-
-  add(titleInput: HTMLInputElement): void {
+  /** The new layer's folder defaults to the selected layer's folder. */
+  async addLayer(): Promise<void> {
+    const result = await firstValueFrom(
+      this._matDialog
+        .open<DialogAddLayerComponent, DialogAddLayerData, DialogAddLayerResult>(
+          DialogAddLayerComponent,
+          {
+            restoreFocus: true,
+            data: {
+              sections: this.sections(),
+              defaultSectionId: this.selectedLayer()?.sectionId ?? null,
+            },
+          },
+        )
+        .afterClosed(),
+    );
+    if (!result) return;
     const id = this._layerService.addLayer(
       this.project().id,
-      this.newTitle(),
-      this.newSectionId(),
+      result.title,
+      result.sectionId,
     );
     if (id) {
-      // Clear the field itself too: typing and submitting before the next
-      // render leaves the `[value]` binding at '' → '' and it never resets.
-      titleInput.value = '';
-      this.newTitle.set('');
       this.selectedId.set(id);
     }
   }
@@ -226,14 +279,7 @@ export class LayersViewComponent {
         .afterClosed(),
     );
     if (typeof title === 'string' && title.trim()) {
-      const id = this._sectionService.addSection(
-        title,
-        this.project().id,
-        WorkContextType.PROJECT,
-      );
-      if (id) {
-        this._newSectionId.set(id);
-      }
+      this._sectionService.addSection(title, this.project().id, WorkContextType.PROJECT);
     }
   }
 

@@ -90,6 +90,7 @@ import { PlannerActions } from '../../planner/store/planner.actions';
 import { DateService } from '../../../core/date/date.service';
 import { MenuTreeService } from '../../menu-tree/menu-tree.service';
 import { SelectOptionRowComponent } from '../../../ui/select-option-row/select-option-row.component';
+import { IS_LAYERS_PLATFORM_SUPPORTED } from '../../layer/layer.util';
 
 export interface TaskAddEvent {
   taskId: string;
@@ -203,6 +204,10 @@ export class AddTaskBarComponent implements AfterViewInit, OnInit, OnDestroy {
   hasNewTags = computed(() => this.stateService.state().newTagTitles.length > 0);
   currentProject = computed(() =>
     this.projects().find((p) => p.id === this.stateService.state().projectId),
+  );
+  // Projects with Layers on call their tasks "goals/tasks".
+  isGoalWording = computed(
+    () => IS_LAYERS_PLATFORM_SUPPORTED && !!this.currentProject()?.isLayersEnabled,
   );
   // The submit (+) button is always in the layout so its space is reserved; it
   // is only visually shown while composing a task (hidden via visibility, not

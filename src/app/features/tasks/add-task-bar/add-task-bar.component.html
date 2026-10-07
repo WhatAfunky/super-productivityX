@@ -36,7 +36,9 @@
         @let inputPlaceholder =
           isSearchMode()
             ? (T.F.TASK.ADD_TASK_BAR.PLACEHOLDER_SEARCH | translate)
-            : (T.F.TASK.ADD_TASK_BAR.PLACEHOLDER_CREATE | translate);
+            : isGoalWording()
+              ? (T.F.LAYER.PLACEHOLDER_CREATE_GOAL | translate)
+              : (T.F.TASK.ADD_TASK_BAR.PLACEHOLDER_CREATE | translate);
         <textarea
           #inputEl
           class="main-input"

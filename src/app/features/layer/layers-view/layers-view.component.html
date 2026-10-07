@@ -1,57 +1,63 @@
 <div class="layers-view">
   <section class="list-pane">
-    <form
-      class="add-bar"
-      (submit)="$event.preventDefault(); add(titleInput)"
+    <section
+      class="goals-strip"
+      [attr.aria-label]="T.F.LAYER.GOALS_TITLE | translate"
     >
-      <input
-        #titleInput
-        class="field add-title"
-        type="text"
-        [value]="newTitle()"
-        (input)="setNewTitle($event)"
-        [attr.maxlength]="MAX_TITLE_LENGTH"
-        [placeholder]="T.F.LAYER.ADD_PLACEHOLDER | translate"
-        [attr.aria-label]="T.F.LAYER.ADD_PLACEHOLDER | translate"
-      />
-      <select
-        class="field"
-        (change)="setNewSectionId($event)"
-        [attr.aria-label]="T.F.LAYER.FOLDER | translate"
-      >
-        <option
-          value=""
-          [selected]="!newSectionId()"
-        >
-          {{ T.F.LAYER.NO_FOLDER | translate }}
-        </option>
-        @for (section of sections(); track section.id) {
-          <option
-            [value]="section.id"
-            [selected]="section.id === newSectionId()"
-          >
-            {{ section.title }}
-          </option>
+      <div class="goals-head">
+        <span class="goals-title">{{ T.F.LAYER.GOALS_TITLE | translate }}</span>
+        @if (goals().length) {
+          <span class="goals-count">{{ goals().length }}</span>
         }
-      </select>
-      <button
-        mat-flat-button
-        color="primary"
-        type="submit"
-        [disabled]="!newTitle().trim()"
-      >
-        {{ T.F.LAYER.ADD | translate }}
-      </button>
-    </form>
+        <button
+          mat-button
+          type="button"
+          class="goals-toggle"
+          [attr.aria-expanded]="isGoalsShown()"
+          (click)="toggleGoals()"
+        >
+          <mat-icon>{{ isGoalsShown() ? 'expand_less' : 'expand_more' }}</mat-icon>
+          {{ (isGoalsShown() ? T.F.LAYER.GOALS_HIDE : T.F.LAYER.GOALS_SHOW) | translate }}
+        </button>
+      </div>
+      @if (isGoalsShown()) {
+        @if (goals().length) {
+          <ul class="goal-list">
+            @for (goal of goals(); track goal.id) {
+              <li class="goal-row">
+                <done-toggle
+                  [isDone]="false"
+                  [attr.aria-label]="T.F.LAYER.GOALS_DONE | translate"
+                  (toggled)="completeGoal(goal)"
+                ></done-toggle>
+                <span class="goal-title">{{ goal.title }}</span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="empty">{{ T.F.LAYER.GOALS_EMPTY | translate }}</p>
+        }
+      }
+    </section>
+
+    <segmented-button-group
+      class="view-mode"
+      size="md"
+      [options]="viewModeOptions"
+      [selectedId]="viewMode()"
+      [ariaLabel]="T.F.LAYER.VIEW_MODE | translate"
+      (selectionChange)="setViewMode($event)"
+    ></segmented-button-group>
 
     <div class="toolbar">
-      <segmented-button-group
-        size="md"
-        [options]="viewModeOptions"
-        [selectedId]="viewMode()"
-        [ariaLabel]="T.F.LAYER.VIEW_MODE | translate"
-        (selectionChange)="setViewMode($event)"
-      ></segmented-button-group>
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="addLayer()"
+      >
+        <mat-icon>add</mat-icon>
+        {{ T.F.LAYER.ADD | translate }}
+      </button>
       <button
         mat-stroked-button
         type="button"
