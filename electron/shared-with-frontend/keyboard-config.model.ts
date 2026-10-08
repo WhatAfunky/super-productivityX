@@ -15,6 +15,7 @@ export type KeyboardConfig = Readonly<{
   showHelp?: string | null;
   showSearchBar?: string | null;
   addNewNote?: string | null;
+  addNewLayer?: string | null;
   focusSideNav?: string | null;
   toggleSideNavMode?: string | null;
   openProjectNotes?: string | null;

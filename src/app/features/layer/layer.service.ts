@@ -6,15 +6,11 @@ import { MatDialog } from '@angular/material/dialog';
 import { map } from 'rxjs/operators';
 import { Layer } from './layer.model';
 import { addLayer, deleteLayer, updateLayer } from './store/layer.actions';
-import { selectLayersByProjectIdMap } from './store/layer.selectors';
-import {
-  createLayerImageId,
-  isValidLayerImageId,
-  sanitizeLayerTitle,
-} from './layer.util';
-import { ClipboardImageService } from '../../core/clipboard-image/clipboard-image.service';
+import { selectAllLayers, selectLayersByProjectIdMap } from './store/layer.selectors';
+import { sanitizeLayerTitle } from './layer.util';
 import { SnackService } from '../../core/snack/snack.service';
-import { Log } from '../../core/log';
+import { TranslateService } from '@ngx-translate/core';
+import { LayerImageService } from './layer-image.service';
 import { T } from '../../t.const';
 import { SectionService } from '../section/section.service';
 import { LayerLabelService } from './layer-label.service';
@@ -41,14 +37,30 @@ export interface AddLayerDefaults {
 })
 export class LayerService {
   private _store = inject(Store);
-  private _clipboardImageService = inject(ClipboardImageService);
   private _snackService = inject(SnackService);
   private _matDialog = inject(MatDialog);
   private _sectionService = inject(SectionService);
   private _layerLabelService = inject(LayerLabelService);
-  // imageId → blob: URL. Images are immutable per id (a replaced screenshot
-  // gets a new id), so a cached URL never goes stale.
-  private _imageUrlCache = new Map<string, string>();
+  private _layerImageService = inject(LayerImageService);
+  private _translateService = inject(TranslateService);
+
+  /**
+   * While the Layers view is open it registers its selection here, so Add
+   * layer from anywhere (e.g. the keyboard shortcut) defaults to the selected
+   * layer's folder and label for that project.
+   */
+  private _selectionDefaults: {
+    projectId: string;
+    get: () => AddLayerDefaults;
+  } | null = null;
+
+  registerSelectionDefaults(projectId: string, get: () => AddLayerDefaults): () => void {
+    const entry = { projectId, get };
+    this._selectionDefaults = entry;
+    return () => {
+      if (this._selectionDefaults === entry) this._selectionDefaults = null;
+    };
+  }
 
   getLayersByProjectId$(projectId: string): Observable<readonly Layer[]> {
     return this._store
@@ -84,14 +96,21 @@ export class LayerService {
 
   /**
    * The one way layers get added from the UI (Layers view, focus mode, the
-   * goal-done snack). Without explicit defaults, folder and label follow the
-   * project's newest layer — "keep adding to what I was just doing".
+   * goal-done snack, the shortcut, paste-to-create). Without explicit
+   * defaults, folder and label follow the Layers view's selection when it is
+   * open on this project, else the project's newest layer — "keep adding to
+   * what I was just doing". An `image` (paste-to-create) is previewed in the
+   * dialog and attached to the new layer.
    * Resolves to the new layer's id, or null when cancelled.
    */
   async openAddLayerDialog(
     projectId: string,
     defaults?: AddLayerDefaults,
+    image?: Blob,
   ): Promise<string | null> {
+    if (!defaults && this._selectionDefaults?.projectId === projectId) {
+      defaults = this._selectionDefaults.get();
+    }
     const [sections, labels, layers, labelEntities] = await Promise.all([
       firstValueFrom(this._sectionService.getSectionsByContextId$(projectId)),
       firstValueFrom(this._layerLabelService.getVisibleLabelsByProjectId$(projectId)),
@@ -99,6 +118,7 @@ export class LayerService {
       firstValueFrom(this._store.select(selectLayerLabelEntities)),
     ]);
     const newest = layers[0];
+    const imagePreviewUrl = image ? URL.createObjectURL(image) : null;
     const result = await firstValueFrom(
       this._matDialog
         .open<DialogAddLayerComponent, DialogAddLayerData, DialogAddLayerResult>(
@@ -114,13 +134,46 @@ export class LayerService {
               defaultLabelId: defaults
                 ? defaults.labelId
                 : (resolveLayerLabel(newest?.labelId, labelEntities)?.id ?? null),
+              imagePreviewUrl,
             },
           },
         )
         .afterClosed(),
     );
+    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
     if (!result) return null;
-    return this.addLayer(projectId, result.title, result.sectionId, result.labelId);
+    const id = this.addLayer(projectId, result.title, result.sectionId, result.labelId);
+    if (id && image) {
+      await this.setImage({ id, imageId: null }, image);
+    }
+    return id;
+  }
+
+  /**
+   * A copy of the layer on top of the list: same folder, label and screenshot.
+   * The screenshot is copied to its own file first, so deleting either layer
+   * never strips the other; the copy is then one addLayer op.
+   */
+  async duplicateLayer(layer: Layer): Promise<string | null> {
+    const imageId = layer.imageId
+      ? await this._layerImageService.copy(layer.imageId)
+      : null;
+    const suffix = this._translateService.instant(T.F.LAYER.COPY_SUFFIX);
+    const id = nanoid();
+    this._store.dispatch(
+      addLayer({
+        layer: {
+          id,
+          projectId: layer.projectId,
+          title: sanitizeLayerTitle(`${layer.title} ${suffix}`),
+          createdAt: Date.now(),
+          sectionId: layer.sectionId ?? null,
+          labelId: layer.labelId ?? null,
+          imageId,
+        },
+      }),
+    );
+    return id;
   }
 
   updateLayer(id: string, changes: LayerEditableFields): void {
@@ -131,26 +184,20 @@ export class LayerService {
     this._store.dispatch(deleteLayer({ id: layer.id }));
     // Local side effect of a local user intent: not an effect, so a replayed
     // or remote delete never touches files.
-    void this._deleteImageFile(layer.imageId);
+    void this._layerImageService.delete(layer.imageId);
   }
 
   /** Stores `image` on this device and points the layer at it. */
-  async setImage(layer: Layer, image: Blob): Promise<boolean> {
-    const imageId = createLayerImageId(nanoid());
-    let savedUrl: string | null = null;
-    try {
-      savedUrl = await this._clipboardImageService.saveImage(image, imageId);
-    } catch (e) {
-      Log.err('[Layer] saving image failed', { layerId: layer.id });
-    }
-    if (!savedUrl) {
+  async setImage(layer: Pick<Layer, 'id' | 'imageId'>, image: Blob): Promise<boolean> {
+    const imageId = await this._layerImageService.save(image);
+    if (!imageId) {
       // saveImage already shows a snack for size/quota problems; this covers
       // the remaining failures.
       this._snackService.open({ type: 'ERROR', msg: T.F.LAYER.IMAGE_SAVE_FAILED });
       return false;
     }
     this._store.dispatch(updateLayer({ layer: { id: layer.id, changes: { imageId } } }));
-    void this._deleteImageFile(layer.imageId);
+    void this._layerImageService.delete(layer.imageId);
     return true;
   }
 
@@ -159,36 +206,16 @@ export class LayerService {
     this._store.dispatch(
       updateLayer({ layer: { id: layer.id, changes: { imageId: null } } }),
     );
-    void this._deleteImageFile(layer.imageId);
+    void this._layerImageService.delete(layer.imageId);
   }
 
-  /** A blob: URL for the image, or null if it is not on this device. */
-  async resolveImageUrl(imageId: string | null | undefined): Promise<string | null> {
-    if (!isValidLayerImageId(imageId)) return null;
-    const cached = this._imageUrlCache.get(imageId);
-    if (cached) return cached;
-    try {
-      const blob = await this._clipboardImageService.getImage(imageId);
-      if (!blob) return null;
-      const url = URL.createObjectURL(blob);
-      this._imageUrlCache.set(imageId, url);
-      return url;
-    } catch (e) {
-      return null;
+  /** Deletes this device's screenshot files that no layer points at any more. */
+  async deleteOrphanedImages(): Promise<number> {
+    const layers = await firstValueFrom(this._store.select(selectAllLayers));
+    const referenced = new Set<string>();
+    for (const l of layers) {
+      if (l.imageId) referenced.add(l.imageId);
     }
-  }
-
-  private async _deleteImageFile(imageId: string | null | undefined): Promise<void> {
-    if (!isValidLayerImageId(imageId)) return;
-    const url = this._imageUrlCache.get(imageId);
-    if (url) {
-      URL.revokeObjectURL(url);
-      this._imageUrlCache.delete(imageId);
-    }
-    try {
-      await this._clipboardImageService.deleteImage(imageId);
-    } catch (e) {
-      // Already gone (or never on this device): nothing to clean up.
-    }
+    return this._layerImageService.deleteOrphans(referenced);
   }
 }

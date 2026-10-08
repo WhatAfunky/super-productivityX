@@ -2,13 +2,22 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   ElementRef,
   HostListener,
   inject,
   input,
   signal,
   viewChild,
+  viewChildren,
 } from '@angular/core';
+import {
+  CdkDrag,
+  CdkDragDrop,
+  CdkDropList,
+  moveItemInArray,
+} from '@angular/cdk/drag-drop';
+import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
 import { NgTemplateOutlet } from '@angular/common';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { Store } from '@ngrx/store';
@@ -22,7 +31,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { Project } from '../../project/project.model';
 import { Layer } from '../layer.model';
 import { LayerLabel } from '../layer-label.model';
-import { LayerService } from '../layer.service';
+import { AddLayerDefaults, LayerService } from '../layer.service';
 import { LayerLabelService } from '../layer-label.service';
 import { selectLayerLabelEntities } from '../store/layer-label.selectors';
 import { getLayerLabelColor, resolveLayerLabel } from '../layer-label.util';
@@ -112,6 +121,40 @@ const writeIsGoalsStripHidden = (isHidden: boolean): void => {
   }
 };
 
+// The chosen grouping is remembered per project on this device (a view
+// preference, never synced). Same storage caveats as above.
+const isLayerViewMode = (v: unknown): v is LayerViewMode =>
+  v === 'folder' || v === 'label' || v === 'time';
+
+const readViewModes = (): Record<string, LayerViewMode> => {
+  try {
+    const parsed: unknown = JSON.parse(
+      localStorage.getItem(LS.LAYERS_VIEW_MODE_BY_PROJECT) || '{}',
+    );
+    return parsed && typeof parsed === 'object'
+      ? (parsed as Record<string, LayerViewMode>)
+      : {};
+  } catch {
+    return {};
+  }
+};
+
+const readViewMode = (projectId: string): LayerViewMode => {
+  const modes = readViewModes();
+  const mode = Object.hasOwn(modes, projectId) ? modes[projectId] : undefined;
+  return isLayerViewMode(mode) ? mode : 'folder';
+};
+
+const writeViewMode = (projectId: string, mode: LayerViewMode): void => {
+  try {
+    const modes = readViewModes();
+    modes[projectId] = mode;
+    localStorage.setItem(LS.LAYERS_VIEW_MODE_BY_PROJECT, JSON.stringify(modes));
+  } catch {
+    // Not remembered this time.
+  }
+};
+
 @Component({
   selector: 'layers-view',
   standalone: true,
@@ -128,6 +171,11 @@ const writeIsGoalsStripHidden = (isHidden: boolean): void => {
     MatIconButton,
     MatIcon,
     MatTooltip,
+    MatMenu,
+    MatMenuItem,
+    MatMenuTrigger,
+    CdkDropList,
+    CdkDrag,
   ],
   templateUrl: './layers-view.component.html',
   styleUrls: ['./layers-view.component.scss'],
@@ -154,6 +202,8 @@ export class LayersViewComponent {
   ];
 
   private readonly _fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
+  private readonly _titleInput = viewChild<ElementRef<HTMLInputElement>>('titleInput');
+  private readonly _rowButtons = viewChildren<ElementRef<HTMLButtonElement>>('rowButton');
 
   private readonly _projectId$ = toObservable(computed(() => this.project().id));
 
@@ -211,6 +261,20 @@ export class LayersViewComponent {
     () => this._rows().find((r) => r.layer.id === this.selectedId()) ?? null,
   );
   readonly selectedLayer = computed(() => this.selectedRow()?.layer ?? null);
+
+  constructor() {
+    // Per project: restore the remembered grouping, and let Add layer from
+    // elsewhere (the shortcut) default to this view's selection.
+    effect((onCleanup) => {
+      const projectId = this.project().id;
+      this.viewMode.set(readViewMode(projectId));
+      onCleanup(
+        this._layerService.registerSelectionDefaults(projectId, () =>
+          this._currentAddDefaults(),
+        ),
+      );
+    });
+  }
 
   readonly isFiltering = computed(
     () => !!this.searchText().trim() || this._labelFilter().size > 0,
@@ -303,6 +367,18 @@ export class LayersViewComponent {
     return isHidingEmpty ? groups.filter((g) => g.total > 0) : groups;
   });
 
+  /** The rows currently on screen, top to bottom (for keyboard navigation). */
+  private readonly _navRows = computed<LayerRow[]>(() =>
+    this.groups()
+      .filter((g) => this.viewMode() === 'time' || g.isExpanded)
+      .flatMap((g) => g.shown),
+  );
+
+  /** Folder reordering is offered in the folder view when nothing is filtered. */
+  readonly isFolderReorderable = computed(
+    () => this.viewMode() === 'folder' && !this.isFiltering(),
+  );
+
   toggleGoals(): void {
     const isShown = !this.isGoalsShown();
     this.isGoalsShown.set(isShown);
@@ -314,7 +390,9 @@ export class LayersViewComponent {
   }
 
   setViewMode(id: string | number): void {
-    this.viewMode.set(id === 'time' || id === 'label' ? id : 'folder');
+    const mode: LayerViewMode = id === 'time' || id === 'label' ? id : 'folder';
+    this.viewMode.set(mode);
+    writeViewMode(this.project().id, mode);
   }
 
   setSearchText(ev: Event): void {
@@ -358,15 +436,46 @@ export class LayersViewComponent {
   }
 
   /** Folder and label default to the selected layer's (none if nothing selected). */
-  async addLayer(): Promise<void> {
-    const row = this.selectedRow();
-    const id = await this._layerService.openAddLayerDialog(this.project().id, {
-      sectionId: row?.layer.sectionId ?? null,
-      labelId: row?.label?.id ?? null,
-    });
+  async addLayer(image?: Blob): Promise<void> {
+    const id = await this._layerService.openAddLayerDialog(
+      this.project().id,
+      this._currentAddDefaults(),
+      image,
+    );
     if (id) {
       this.selectedId.set(id);
     }
+  }
+
+  async duplicateLayer(layer: Layer): Promise<void> {
+    const id = await this._layerService.duplicateLayer(layer);
+    if (id) {
+      this.selectedId.set(id);
+    }
+  }
+
+  /** Drag-and-drop of a folder header (folder view only). */
+  dropFolder(event: CdkDragDrop<unknown>): void {
+    const ids = this.sections().map((s) => s.id);
+    // The unfiled group sits after the folders and can't move; clamp to them.
+    const to = Math.min(event.currentIndex, ids.length - 1);
+    if (event.previousIndex === to || event.previousIndex >= ids.length) return;
+    moveItemInArray(ids, event.previousIndex, to);
+    this._sectionService.updateSectionOrder(this.project().id, ids);
+  }
+
+  moveFolder(sectionId: string, delta: -1 | 1): void {
+    const ids = this.sections().map((s) => s.id);
+    const from = ids.indexOf(sectionId);
+    const to = from + delta;
+    if (from < 0 || to < 0 || to >= ids.length) return;
+    moveItemInArray(ids, from, to);
+    this._sectionService.updateSectionOrder(this.project().id, ids);
+  }
+
+  private _currentAddDefaults(): AddLayerDefaults {
+    const row = this.selectedRow();
+    return { sectionId: row?.layer.sectionId ?? null, labelId: row?.label?.id ?? null };
   }
 
   async addFolder(): Promise<void> {
@@ -467,13 +576,79 @@ export class LayersViewComponent {
    */
   @HostListener('document:paste', ['$event'])
   onPaste(ev: ClipboardEvent): void {
-    const layer = this.selectedLayer();
-    if (!layer || this._isTextField(ev.target)) return;
+    if (this._isTextField(ev.target) || this._matDialog.openDialogs.length) return;
     const image = getImageFromDataTransfer(ev.clipboardData);
-    if (image) {
-      ev.preventDefault();
+    if (!image) return;
+    ev.preventDefault();
+    const layer = this.selectedLayer();
+    if (layer) {
       void this._layerService.setImage(layer, image);
+    } else {
+      // Paste to create: screenshot first, name second.
+      void this.addLayer(image);
     }
+  }
+
+  /**
+   * ↑/↓ move the selection through the rows on screen, Enter renames the
+   * selected layer, Delete deletes it (with confirm). Ignored while typing,
+   * in dialogs, and on buttons other than layer rows (their own Enter wins).
+   */
+  @HostListener('document:keydown', ['$event'])
+  onKeydown(ev: KeyboardEvent): void {
+    if (ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey) return;
+    if (this._matDialog.openDialogs.length || !this._isNavTarget(ev.target)) return;
+    const layer = this.selectedLayer();
+    switch (ev.key) {
+      case 'ArrowDown':
+      case 'ArrowUp': {
+        const rows = this._navRows();
+        if (!rows.length) return;
+        const index = rows.findIndex((r) => r.layer.id === layer?.id);
+        const next =
+          index < 0
+            ? ev.key === 'ArrowDown'
+              ? 0
+              : rows.length - 1
+            : Math.min(
+                rows.length - 1,
+                Math.max(0, index + (ev.key === 'ArrowDown' ? 1 : -1)),
+              );
+        ev.preventDefault();
+        this.selectedId.set(rows[next].layer.id);
+        this._focusSelectedRow(rows[next].layer.id);
+        return;
+      }
+      case 'Enter':
+        if (!layer) return;
+        ev.preventDefault();
+        this._titleInput()?.nativeElement.select();
+        return;
+      case 'Delete':
+      case 'Backspace':
+        if (!layer) return;
+        ev.preventDefault();
+        void this.deleteLayer(layer);
+        return;
+    }
+  }
+
+  private _focusSelectedRow(layerId: string): void {
+    // After the selection renders: focus (and scroll to) the row.
+    queueMicrotask(() => {
+      this._rowButtons()
+        .find((b) => b.nativeElement.dataset['layerId'] === layerId)
+        ?.nativeElement.focus();
+    });
+  }
+
+  /** Keyboard nav only from the page itself or a layer row. */
+  private _isNavTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return true;
+    if (this._isTextField(target) || target instanceof HTMLSelectElement) return false;
+    if (target === document.body) return true;
+    if (target.closest('.layer-row')) return true;
+    return !target.closest('button, a, [role="button"], mat-dialog-container');
   }
 
   private _isTextField(target: EventTarget | null): boolean {

@@ -26,6 +26,8 @@ export interface DialogAddLayerData {
   defaultSectionId: string | null;
   /** Pre-selected label; null means "No label". */
   defaultLabelId: string | null;
+  /** Paste-to-create: preview of the screenshot the new layer will get. */
+  imagePreviewUrl?: string | null;
 }
 
 export interface DialogAddLayerResult {
@@ -58,6 +60,13 @@ export interface DialogAddLayerResult {
       (ngSubmit)="submit()"
     >
       <mat-dialog-content class="fields">
+        @if (data.imagePreviewUrl) {
+          <img
+            class="image-preview"
+            [src]="data.imagePreviewUrl"
+            alt=""
+          />
+        }
         <mat-form-field>
           <mat-label>{{ T.F.LAYER.NAME | translate }}</mat-label>
           <input
@@ -122,6 +131,13 @@ export interface DialogAddLayerResult {
         display: flex;
         flex-direction: column;
         min-width: min(360px, 80vw);
+      }
+
+      .image-preview {
+        max-height: 180px;
+        object-fit: contain;
+        margin-bottom: var(--s2);
+        border-radius: var(--radius-sm);
       }
     `,
   ],

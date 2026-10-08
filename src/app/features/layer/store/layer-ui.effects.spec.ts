@@ -39,7 +39,9 @@ describe('LayerUiEffects', () => {
     snack = jasmine.createSpyObj<SnackService>('SnackService', ['open']);
     layerService = jasmine.createSpyObj<LayerService>('LayerService', [
       'openAddLayerDialog',
+      'deleteOrphanedImages',
     ]);
+    layerService.deleteOrphanedImages.and.resolveTo(0);
     isBulk.set(false);
     TestBed.configureTestingModule({
       providers: [
@@ -57,7 +59,9 @@ describe('LayerUiEffects', () => {
     store = TestBed.inject(MockStore);
     store.overrideSelector(selectTaskEntities, tasks);
     store.overrideSelector(selectProjectFeatureState, projects(true));
-    TestBed.inject(LayerUiEffects).offerLayerOnGoalDone$.subscribe();
+    const effects = TestBed.inject(LayerUiEffects);
+    effects.offerLayerOnGoalDone$.subscribe();
+    effects.deleteImagesOfDeletedProject$.subscribe();
   });
 
   it('offers "Name the layer" when a goal in a Layers project is completed', () => {
@@ -80,5 +84,12 @@ describe('LayerUiEffects', () => {
     actions$.next(done('goal'));
 
     expect(snack.open).not.toHaveBeenCalled();
+  });
+
+  it('cleans up screenshot files after a local project delete', () => {
+    actions$.next(
+      TaskSharedActions.deleteProject({ projectId: 'p1', noteIds: [], allTaskIds: [] }),
+    );
+    expect(layerService.deleteOrphanedImages).toHaveBeenCalledTimes(1);
   });
 });

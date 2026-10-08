@@ -7,6 +7,7 @@ import {
 import { TaskReminderOptionId } from '../tasks/task.model';
 import { GlobalConfigState } from './global-config.model';
 import { INBOX_PROJECT } from '../project/project.const';
+import { IS_MAC } from '../../util/is-mac';
 import { DEFAULT_MAX_BACKUP_FILES } from '../../../../electron/shared-with-frontend/backup-file-cleanup.util';
 
 const minute = 60 * 1000;
@@ -145,6 +146,9 @@ export const DEFAULT_GLOBAL_CONFIG: GlobalConfigState = {
     addNewTask: 'Shift+A',
     addNewProject: 'Shift+P',
     addNewNote: 'Alt+N',
+    // Cmd+N on macOS ("Meta"), Ctrl+N elsewhere. Desktop app only in practice:
+    // browsers reserve these for a new window.
+    addNewLayer: IS_MAC ? 'Meta+N' : 'Ctrl+N',
     openProjectNotes: 'Shift+N',
     toggleTaskViewCustomizerPanel: 'C',
     toggleIssuePanel: 'P',

@@ -23,6 +23,7 @@ import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatSelect } from '@angular/material/select';
 import { MatOption } from '@angular/material/core';
 import { Log } from '../../../../core/log';
+import { isValidLayerImageId } from '../../../layer/layer.util';
 
 type SortOrder = 'newest' | 'oldest' | 'largest' | 'smallest';
 
@@ -86,7 +87,11 @@ export class DialogClipboardImagesManagerComponent implements OnInit {
   async loadImages(): Promise<void> {
     this.isLoading.set(true);
     try {
-      const images = await this._clipboardImageService.listImages();
+      // Layer screenshots share this storage but belong to their layers: they
+      // are managed (and deleted) from the Layers view, never from here.
+      const images = (await this._clipboardImageService.listImages()).filter(
+        (image) => !isValidLayerImageId(image.id),
+      );
       this.images.set(images);
 
       // Load image URLs for preview

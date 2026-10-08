@@ -194,13 +194,36 @@ Merging "Sound" into "SFX" sets `Sound.mergedIntoId = SFX` — a single-entity e
 - Focus mode: an **Add layer** button opening the shared Add layer dialog (decided 2026-10-06; replaces the inline strip from mockup A2, so there is one way to add a layer).
 - Offer to log a layer when a goal is completed: a small non-blocking action, not a dialog.
 
-**v2 — method and polish**
+**v1.1 — small additions** (decided 2026-10-07)
+
+- "Duplicate" on the selected layer: same name + " copy", same folder and label, a new `createdAt` (so it goes on top), and the **same screenshot**. The image is copied to a new `imageId` rather than shared: deleting or replacing one layer's image deletes its file, so a shared id would silently strip the other layer.
+
+- **Folder reordering from the Layers view** (asked for 2026-10-07): Drag a folder by its title, the same gesture as the Tasks tab, plus Move up / Move down in a small menu on each folder header (keyboard-friendly). The order is shared, so a move in either view shows in both. Folders are project sections, which already keep an order (`updateSectionOrder`, the same action the Tasks tab uses when you drag a section title), so this reuses the existing op and its conflict handling. No new persisted field. The Layers view already follows that order today.
+
+- **Optimizations** (agreed 2026-10-08):
+  1. Thumbnails: store a small thumbnail next to each screenshot and use it in the list; load the full image only in the preview. Cap or release the cached image URLs.
+  2. Re-encode large screenshots (e.g. WebP) on save, so desktop browsers stay under the 2 MB web limit and disk use drops.
+  3. No orphaned or wrongly deleted images: deleting a project also deletes its layers' screenshot files on this device, and the clipboard-images "delete all" leaves layer screenshots alone.
+- **QoL** (agreed 2026-10-08):
+  - Paste to create: Cmd/Ctrl+V with no layer selected opens Add layer with the screenshot attached.
+  - Click the preview screenshot to enlarge it (reuse the app's image viewer).
+  - Keyboard in the Layers view: ↑/↓ select, Enter rename, Delete delete (with confirm).
+  - Remember the view mode (By folder / By label / Timeline) per project on this device.
+  - **New layer shortcut**, default Ctrl/Cmd+N, rebindable in Settings → Keyboard shortcuts (a new optional key in the keyboard config, with a default). Desktop app only: browsers reserve Cmd/Ctrl+N for a new window.
+- Not doing: a "hide empty folders" toggle.
+
+**v2 — the last planned phase** (scope capped 2026-10-08)
+
+Organisation stops at four tools: folders, labels, groups, manual order. Nothing further is added there. Suggested build order: method (vision, anchor, export, nudge), then organisation (groups, manual order), then focus mode (break stopwatch, ▶ on a layer), then the sync pass.
 
 - Vision statement (a text field on the project) and an **anchor** star on one layer, with the anchor pinned for comparison.
 - In-app capture on Electron.
 - Export screenshots in timeline order.
 - Opt-in end-of-session "did something exist?" nudge.
 - The sync pass (§7.6).
+- **Flowtime break stopwatch** (decided 2026-10-08): in Flowtime, Pause becomes a break. While paused, the clock shows "On break · mm:ss" counting up, and Resume continues the same session, so there's no need to finish it to take a break. Display only: break time is not recorded or fed into take-a-break tracking. Derive it from the existing pause state, with no new persisted field if the pause start is already known.
+- **Play on a layer** (decided 2026-10-08): a ▶ on hover, like task rows. It starts a focus session on a goal linked to the layer ("Work on: <layer title>"), reusing it while it's open and creating it otherwise. The session shows the layer and its screenshot, and time is tracked on that goal like any task. Layers get no time of their own (rejected: a new tracking target across time tracking, history and sync). Design point: store the link on the layer (e.g. `focusTaskId?`), not on Task (core model, plugin API). "Create goal + link" touches two entities, so it needs one meta-reducer action per AGENTS.md rule 3, or a shape that avoids the cross-entity write.
+- **Manual order (up/down) inside a folder** (decided 2026-10-07), built with layer groups: each layer stores its own sort key (e.g. a fractional index, set on drag), never a list of ids on the folder (rule 13). **By folder** follows the manual order; **Timeline** stays strictly by date and remains the export order.
 - **Layer groups** (requested 2026-10-06 after using v0): bundle related layers inside a folder. Placed after labels (v1) on purpose: "By label" may cover part of the need, and a group is a new persisted shape, so design it once we know which axis labels leave uncovered. Confirmed shape: like Photoshop / Clip Studio Paint layer groups — select several layers and bundle them into a named, collapsible group. Open: can groups nest, and can a layer be in only one group?
 
 **v3+**
@@ -270,3 +293,19 @@ What shipped on `feat/layers-v0`, and where it differs from the plan above:
 - **Focus mode:** an **Add layer** icon button (and an entry in the small-screen menu) while a session runs, shown only for Layers projects. `LayerService` is resolved on click, so focus mode takes on no new start-up dependencies.
 - **Goal-done snack:** `LayerUiEffects.offerLayerOnGoalDone$` listens to `LOCAL_ACTIONS` only (remote and replayed completions never prompt). It fires for top-level goals in Layers projects, not for bulk "mark done", and shows "Done. Did something new come to exist?" with a **Name the layer** button that opens the dialog.
 - **Verified:** Angular suite 16,871 passing (2 skipped, cold cache), layer specs 47, shared-schema 95, server validation spec 61. Every flow above was also exercised in the browser.
+
+## 14. v1.1 as built (2026-10-08)
+
+- **Screenshots:** a new `LayerImageService` handles screenshot storage (on top of `ClipboardImageService`).
+  - Images over 1 MB are re-encoded to WebP at full resolution, kept only if smaller (GIFs are untouched). Measured: a 4.9 MB PNG screenshot was stored as 403 KB.
+  - Each image gets a derived `<imageId>-thumb` WebP, at most 256 px. List rows load thumbnails and the preview loads the full image. Screenshots from v1 get their thumbnail generated on first view.
+  - Decoded images sit in bounded LRU caches (120 thumbnails, 8 full images) that revoke what they evict.
+- **Cleanup:** after a local project delete, `LayerUiEffects.deleteImagesOfDeletedProject$` deletes `layer-` files that no layer references and that are older than 60 s, so a screenshot being saved can't be caught. Remote deletes and app start never sweep. The clipboard-images manager neither lists nor deletes layer screenshots.
+- **Duplicate:** the screenshot is copied to its own file first, then a single `addLayer` op adds the copy (" copy" suffix, same folder and label, new `createdAt`).
+- **Folders:** reorder by dragging the title (CDK, same as the Tasks tab) or via Move up / Move down in a folder menu. Both use the existing `updateSectionOrder`. This is offered only in By folder and only while nothing is filtered.
+- **Paste to create:** with no layer selected, a pasted image opens Add layer, previews the image and attaches it.
+- **Preview:** click the full image to enlarge it (the shared `enlargeImg` directive).
+- **Keyboard:** ↑/↓ move the selection through the rows on screen, Enter selects the name for renaming, and Delete/Backspace deletes (with confirm). Ignored while typing, inside dialogs, and on other buttons.
+- **View memory:** the view mode is remembered per project in localStorage (`SUP_LAYERS_VIEW_MODE_BY_PROJECT`).
+- **Shortcut:** `addNewLayer` in the keyboard config (optional key), defaulting to `Meta+N` on macOS and `Ctrl+N` elsewhere (the app's "Ctrl" is the physical Control key). It works in Layers projects, and its folder and label default to the Layers view's selection when that view is open (`registerSelectionDefaults`). `LayerService` is resolved lazily in the shortcut service.
+- **Verified:** Angular suite 16,881 passing (cold cache), layer specs 57. Every flow above was also exercised in the browser, including a real mouse drag of a folder.

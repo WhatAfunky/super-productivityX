@@ -3,14 +3,14 @@ import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { LayerService } from './layer.service';
 import { Layer } from './layer.model';
 import { addLayer, deleteLayer, updateLayer } from './store/layer.actions';
-import { ClipboardImageService } from '../../core/clipboard-image/clipboard-image.service';
 import { SnackService } from '../../core/snack/snack.service';
-import { isValidLayerImageId } from './layer.util';
+import { LayerImageService } from './layer-image.service';
+import { TranslateService } from '@ngx-translate/core';
 import { MatDialog } from '@angular/material/dialog';
 import { of } from 'rxjs';
 import { SectionService } from '../section/section.service';
 import { LayerLabelService } from './layer-label.service';
-import { selectLayersByProjectIdMap } from './store/layer.selectors';
+import { selectAllLayers, selectLayersByProjectIdMap } from './store/layer.selectors';
 import { selectLayerLabelEntities } from './store/layer-label.selectors';
 import { DialogAddLayerData } from './dialog-add-layer/dialog-add-layer.component';
 import { LayerLabel } from './layer-label.model';
@@ -19,7 +19,7 @@ describe('LayerService', () => {
   let service: LayerService;
   let store: MockStore;
   let dispatchSpy: jasmine.Spy;
-  let images: jasmine.SpyObj<ClipboardImageService>;
+  let images: jasmine.SpyObj<LayerImageService>;
   let snack: jasmine.SpyObj<SnackService>;
   let dialog: jasmine.SpyObj<MatDialog>;
 
@@ -34,19 +34,21 @@ describe('LayerService', () => {
   });
 
   beforeEach(() => {
-    images = jasmine.createSpyObj<ClipboardImageService>('ClipboardImageService', [
-      'saveImage',
-      'getImage',
-      'deleteImage',
+    images = jasmine.createSpyObj<LayerImageService>('LayerImageService', [
+      'save',
+      'copy',
+      'delete',
+      'deleteOrphans',
     ]);
-    images.deleteImage.and.resolveTo(true);
+    images.delete.and.resolveTo();
     snack = jasmine.createSpyObj<SnackService>('SnackService', ['open']);
     dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
     TestBed.configureTestingModule({
       providers: [
         LayerService,
         provideMockStore(),
-        { provide: ClipboardImageService, useValue: images },
+        { provide: LayerImageService, useValue: images },
+        { provide: TranslateService, useValue: { instant: () => 'copy' } },
         { provide: SnackService, useValue: snack },
         { provide: MatDialog, useValue: dialog },
         {
@@ -92,31 +94,63 @@ describe('LayerService', () => {
   });
 
   describe('setImage', () => {
-    it('saves under a fresh layer image id, points the layer at it and drops the old image', async () => {
-      images.saveImage.and.resolveTo('file:///x.png');
-      const old = 'layer-oldImage';
+    it('saves the image, points the layer at it and drops the old image', async () => {
+      images.save.and.resolveTo('layer-new');
 
-      const ok = await service.setImage(layer({ imageId: old }), new Blob(['x']));
+      const ok = await service.setImage(layer({ imageId: 'layer-old' }), new Blob(['x']));
 
       expect(ok).toBe(true);
-      const newId = images.saveImage.calls.mostRecent().args[1]!;
-      expect(isValidLayerImageId(newId)).toBe(true);
-      expect(newId).not.toBe(old);
       expect(dispatchSpy).toHaveBeenCalledOnceWith(
-        updateLayer({ layer: { id: 'l1', changes: { imageId: newId } } }),
+        updateLayer({ layer: { id: 'l1', changes: { imageId: 'layer-new' } } }),
       );
-      expect(images.deleteImage).toHaveBeenCalledOnceWith(old);
+      expect(images.delete).toHaveBeenCalledOnceWith('layer-old');
     });
 
     it('changes nothing and tells the user when saving fails', async () => {
-      images.saveImage.and.resolveTo(null);
+      images.save.and.resolveTo(null);
 
       const ok = await service.setImage(layer({ imageId: 'layer-keep' }), new Blob());
 
       expect(ok).toBe(false);
       expect(dispatchSpy).not.toHaveBeenCalled();
-      expect(images.deleteImage).not.toHaveBeenCalled();
+      expect(images.delete).not.toHaveBeenCalled();
       expect(snack.open).toHaveBeenCalled();
+    });
+  });
+
+  describe('duplicateLayer', () => {
+    it('adds one copy on top with the same folder, label and a copied screenshot', async () => {
+      images.copy.and.resolveTo('layer-copied');
+      const original = layer({ sectionId: 's1', labelId: 'code', imageId: 'layer-orig' });
+
+      const id = await service.duplicateLayer(original);
+
+      expect(images.copy).toHaveBeenCalledOnceWith('layer-orig');
+      expect(dispatchSpy).toHaveBeenCalledTimes(1);
+      const action = dispatchSpy.calls.mostRecent().args[0] as ReturnType<
+        typeof addLayer
+      >;
+      expect(action.layer).toEqual(
+        jasmine.objectContaining({
+          id: id!,
+          projectId: 'p1',
+          title: 'Something exists copy',
+          sectionId: 's1',
+          labelId: 'code',
+          imageId: 'layer-copied',
+        }),
+      );
+      expect(action.layer.id).not.toBe(original.id);
+      expect(action.layer.createdAt).toBeGreaterThan(original.createdAt);
+    });
+
+    it('copies without an image when the original has none', async () => {
+      await service.duplicateLayer(layer());
+      expect(images.copy).not.toHaveBeenCalled();
+      const action = dispatchSpy.calls.mostRecent().args[0] as ReturnType<
+        typeof addLayer
+      >;
+      expect(action.layer.imageId).toBeNull();
     });
   });
 
@@ -150,6 +184,30 @@ describe('LayerService', () => {
       await service.openAddLayerDialog('p1');
       expect(dialogData().defaultSectionId).toBe('s2');
       expect(dialogData().defaultLabelId).toBe('code');
+    });
+
+    it("prefers the open Layers view's selection over the newest layer", async () => {
+      openWith(undefined);
+      const unregister = service.registerSelectionDefaults('p1', () => ({
+        sectionId: 's1',
+        labelId: null,
+      }));
+      await service.openAddLayerDialog('p1');
+      expect(dialogData().defaultSectionId).toBe('s1');
+
+      unregister();
+      await service.openAddLayerDialog('p1');
+      expect(dialogData().defaultSectionId).toBe('s2');
+    });
+
+    it('attaches a pasted image to the new layer', async () => {
+      images.save.and.resolveTo('layer-pasted');
+      openWith({ title: 'Pasted', sectionId: null, labelId: null });
+      const id = await service.openAddLayerDialog('p1', undefined, new Blob(['png']));
+      expect(dialogData().imagePreviewUrl).toMatch(/^blob:/);
+      expect(dispatchSpy).toHaveBeenCalledWith(
+        updateLayer({ layer: { id: id!, changes: { imageId: 'layer-pasted' } } }),
+      );
     });
 
     it('uses explicit defaults when given', async () => {
@@ -187,28 +245,23 @@ describe('LayerService', () => {
     expect(dispatchSpy).toHaveBeenCalledOnceWith(
       updateLayer({ layer: { id: 'l1', changes: { imageId: null } } }),
     );
-    expect(images.deleteImage).toHaveBeenCalledOnceWith('layer-abc');
+    expect(images.delete).toHaveBeenCalledOnceWith('layer-abc');
   });
 
   it('deleteLayer dispatches the delete and removes its image', () => {
     service.deleteLayer(layer({ imageId: 'layer-abc' }));
 
     expect(dispatchSpy).toHaveBeenCalledOnceWith(deleteLayer({ id: 'l1' }));
-    expect(images.deleteImage).toHaveBeenCalledOnceWith('layer-abc');
+    expect(images.delete).toHaveBeenCalledOnceWith('layer-abc');
   });
 
-  it('never touches storage for an image id it did not create', async () => {
-    service.deleteLayer(layer({ imageId: '../../etc/passwd' }));
-    const url = await service.resolveImageUrl('clip-123-foreign');
-
-    expect(url).toBeNull();
-    expect(images.deleteImage).not.toHaveBeenCalled();
-    expect(images.getImage).not.toHaveBeenCalled();
-  });
-
-  it('resolveImageUrl returns null when the image is not on this device', async () => {
-    images.getImage.and.resolveTo(null);
-
-    expect(await service.resolveImageUrl('layer-elsewhere')).toBeNull();
+  it('deleteOrphanedImages keeps every image a layer still points at', async () => {
+    store.overrideSelector(selectAllLayers, [
+      layer({ imageId: 'layer-a' }),
+      layer({ id: 'l2', imageId: null }),
+    ]);
+    images.deleteOrphans.and.resolveTo(0);
+    await service.deleteOrphanedImages();
+    expect(images.deleteOrphans).toHaveBeenCalledOnceWith(new Set(['layer-a']));
   });
 });

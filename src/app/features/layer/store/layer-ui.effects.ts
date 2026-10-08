@@ -56,4 +56,19 @@ export class LayerUiEffects {
       ),
     { dispatch: false },
   );
+
+  /**
+   * Deleting a project removes its layers in the reducer; their screenshot
+   * files on this device go here. Local deletes only: a project deleted on
+   * another device leaves this device's files alone (no surprise deletes
+   * during sync). The sweep only removes `layer-` files no layer references.
+   */
+  deleteImagesOfDeletedProject$ = createEffect(
+    () =>
+      this._actions$.pipe(
+        ofType(TaskSharedActions.deleteProject),
+        tap(() => void this._layerService.deleteOrphanedImages()),
+      ),
+    { dispatch: false },
+  );
 }

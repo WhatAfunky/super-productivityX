@@ -1,4 +1,4 @@
-import { computed, inject, Injectable } from '@angular/core';
+import { computed, inject, Injectable, Injector } from '@angular/core';
 import { OverlayContainer } from '@angular/cdk/overlay';
 import { IS_ELECTRON } from '../../app.constants';
 import { checkKeyCombo } from '../../util/check-key-combo';
@@ -13,6 +13,9 @@ import { IPC } from '../../../../electron/shared-with-frontend/ipc-events.const'
 import { UiHelperService } from '../../features/ui-helper/ui-helper.service';
 import { WorkContextService } from '../../features/work-context/work-context.service';
 import { WorkContextType } from '../../features/work-context/work-context.model';
+import { LayerService } from '../../features/layer/layer.service';
+import { IS_LAYERS_PLATFORM_SUPPORTED } from '../../features/layer/layer.util';
+import { selectProjectFeatureState } from '../../features/project/store/project.selectors';
 import { T } from '../../t.const';
 import { Store } from '@ngrx/store';
 import { showFocusOverlay } from '../../features/focus-mode/store/focus-mode.actions';
@@ -60,6 +63,7 @@ export class ShortcutService {
   private _router = inject(Router);
   private _layoutService = inject(LayoutService);
   private _matDialog = inject(MatDialog);
+  private _injector = inject(Injector);
   private _taskService = inject(TaskService);
   private _workContextService = inject(WorkContextService);
   private _activatedRoute = inject(ActivatedRoute);
@@ -162,6 +166,21 @@ export class ShortcutService {
     } finally {
       this._isNoteTaskHandoffPending = false;
     }
+  }
+
+  private async _getActiveLayersProjectId(): Promise<string | null> {
+    if (
+      !IS_LAYERS_PLATFORM_SUPPORTED ||
+      this._workContextService.activeWorkContextType !== WorkContextType.PROJECT
+    ) {
+      return null;
+    }
+    const projectId = this._workContextService.activeWorkContextId;
+    if (!projectId) return null;
+    const project = await firstValueFrom(
+      this._store.select(selectProjectFeatureState),
+    ).then((state) => state?.entities[projectId]);
+    return project?.isLayersEnabled ? projectId : null;
   }
 
   private _getAddNoteDialogRef(): MatDialogRef<DialogAddNoteComponent> | null {
@@ -282,6 +301,14 @@ export class ShortcutService {
           autoFocus: 'textarea',
         });
         ev.preventDefault();
+      }
+    } else if (checkKeyCombo(ev, keys.addNewLayer)) {
+      // Only in a project with Layers on; otherwise the key does nothing here.
+      const projectId = await this._getActiveLayersProjectId();
+      if (projectId && this._matDialog.openDialogs.length === 0) {
+        ev.preventDefault();
+        // Resolved on use: the shortcut service takes on no Layers dependencies.
+        void this._injector.get(LayerService).openAddLayerDialog(projectId);
       }
     } else if (checkKeyCombo(ev, keys.openProjectNotes)) {
       ev.preventDefault();

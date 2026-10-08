@@ -131,34 +131,80 @@
         ></ng-container>
       }
     } @else {
-      @for (group of groups(); track group.key) {
-        <collapsible
-          class="layer-group task-section"
-          [title]="
-            group.isFallbackGroup
-              ? ((viewMode() === 'label' ? T.F.LAYER.NO_LABEL : T.F.LAYER.UNFILED)
-                | translate)
-              : group.title
-          "
-          [isExpanded]="group.isExpanded"
-          [isIconBefore]="true"
-          (isExpandedChange)="setGroupExpanded(group.key, $event)"
-        >
-          <span
-            actions
-            class="group-actions"
+      <!-- Folders reorder like the Tasks tab: drag a folder by its title
+           (same saved section order, so both views agree). -->
+      <div
+        cdkDropList
+        cdkDropListLockAxis="y"
+        [cdkDropListDisabled]="!isFolderReorderable()"
+        (cdkDropListDropped)="dropFolder($event)"
+      >
+        @for (group of groups(); track group.key; let first = $first) {
+          @let isMovableFolder = isFolderReorderable() && !group.isFallbackGroup;
+          <div
+            cdkDrag
+            [cdkDragDisabled]="!isMovableFolder"
           >
-            @if (group.label) {
-              <layer-label-pill [label]="group.label"></layer-label-pill>
-            }
-            <span class="group-count">{{ group.total || '' }}</span>
-          </span>
-          <ng-container
-            [ngTemplateOutlet]="rows"
-            [ngTemplateOutletContext]="{ $implicit: group }"
-          ></ng-container>
-        </collapsible>
-      }
+            <collapsible
+              class="layer-group task-section"
+              [title]="
+                group.isFallbackGroup
+                  ? ((viewMode() === 'label' ? T.F.LAYER.NO_LABEL : T.F.LAYER.UNFILED)
+                    | translate)
+                  : group.title
+              "
+              [isExpanded]="group.isExpanded"
+              [isIconBefore]="true"
+              [isTitleDragHandle]="isMovableFolder"
+              (isExpandedChange)="setGroupExpanded(group.key, $event)"
+            >
+              <span
+                actions
+                class="group-actions"
+              >
+                @if (group.label) {
+                  <layer-label-pill [label]="group.label"></layer-label-pill>
+                }
+                <span class="group-count">{{ group.total || '' }}</span>
+                @if (isMovableFolder) {
+                  <button
+                    mat-icon-button
+                    type="button"
+                    class="folder-menu-btn"
+                    [matMenuTriggerFor]="folderMenu"
+                    [attr.aria-label]="T.F.LAYER.FOLDER_OPTIONS | translate"
+                    (click)="$event.stopPropagation()"
+                  >
+                    <mat-icon>more_vert</mat-icon>
+                  </button>
+                  <mat-menu #folderMenu="matMenu">
+                    <button
+                      mat-menu-item
+                      [disabled]="first"
+                      (click)="moveFolder(group.key, -1)"
+                    >
+                      <mat-icon>arrow_upward</mat-icon>
+                      {{ T.F.LAYER.MOVE_UP | translate }}
+                    </button>
+                    <button
+                      mat-menu-item
+                      [disabled]="group.key === sections().at(-1)?.id"
+                      (click)="moveFolder(group.key, 1)"
+                    >
+                      <mat-icon>arrow_downward</mat-icon>
+                      {{ T.F.LAYER.MOVE_DOWN | translate }}
+                    </button>
+                  </mat-menu>
+                }
+              </span>
+              <ng-container
+                [ngTemplateOutlet]="rows"
+                [ngTemplateOutletContext]="{ $implicit: group }"
+              ></ng-container>
+            </collapsible>
+          </div>
+        }
+      </div>
     }
   </section>
 
@@ -167,6 +213,7 @@
       @let layer = row.layer;
       <div class="preview-head">
         <input
+          #titleInput
           class="field preview-title"
           type="text"
           [value]="layer.title"
@@ -175,6 +222,15 @@
           (change)="rename(layer, $event)"
           (keydown.enter)="$any($event.target).blur()"
         />
+        <button
+          mat-icon-button
+          type="button"
+          [matTooltip]="T.F.LAYER.DUPLICATE | translate"
+          [attr.aria-label]="T.F.LAYER.DUPLICATE | translate"
+          (click)="duplicateLayer(layer)"
+        >
+          <mat-icon>content_copy</mat-icon>
+        </button>
         <button
           mat-icon-button
           type="button"
@@ -245,6 +301,7 @@
       >
         <layer-image
           class="preview-image"
+          variant="full"
           [imageId]="layer.imageId"
           [alt]="layer.title"
           [emptyText]="T.F.LAYER.PASTE_HINT | translate"
@@ -291,8 +348,10 @@
     @for (row of group.shown; track row.layer.id) {
       <li>
         <button
+          #rowButton
           type="button"
           class="layer-row"
+          [attr.data-layer-id]="row.layer.id"
           [class.hasLabel]="!!row.labelColor"
           [class.isSelected]="row.layer.id === selectedId()"
           [style.--layer-label-color]="row.labelColor"
