@@ -14,7 +14,7 @@ import { Log } from '../../../core/log';
 import { from, Observable, of, Subject, Subscription, timer } from 'rxjs';
 import { GlobalConfigService } from '../../config/global-config.service';
 import { TaskService } from '../../tasks/task.service';
-import { debounceTime, switchMap, take } from 'rxjs/operators';
+import { debounceTime, map, switchMap, take } from 'rxjs/operators';
 import { TaskAttachmentService } from '../../tasks/task-attachment/task-attachment.service';
 import { fadeAnimation, fadeSwapAnimation } from '../../../ui/animations/fade.ani';
 import { IssueService } from '../../issue/issue.service';
@@ -84,6 +84,9 @@ import {
 import { LayoutService } from '../../../core-ui/layout/layout.service';
 import { LayerService } from '../../layer/layer.service';
 import { IS_LAYERS_PLATFORM_SUPPORTED } from '../../layer/layer.util';
+import { selectLayerFeatureState } from '../../layer/store/layer.selectors';
+import { Layer } from '../../layer/layer.model';
+import { LayerImageComponent } from '../../layer/layer-image/layer-image.component';
 import { selectProjectFeatureState } from '../../project/store/project.selectors';
 
 @Component({
@@ -127,6 +130,7 @@ import { selectProjectFeatureState } from '../../project/store/project.selectors
     MatMenuContent,
     MatMenuItem,
     MatMenuTrigger,
+    LayerImageComponent,
   ],
   host: {
     ['[class.isSessionRunning]']: 'isSessionRunning()',
@@ -258,6 +262,25 @@ export class FocusModeMainComponent {
   isResetCyclesDisabled = computed(() => this.focusModeService.currentCycle() <= 1);
   isShowBottomControls = computed(() => this._isInProgress());
   isShowCountdown = computed(() => this._isCountdown());
+
+  /** Flowtime has no fixed breaks: a pause is a break, timed on screen. */
+  readonly isFlowtimeBreak = computed(
+    () =>
+      this.mode() === FocusModeMode.Flowtime &&
+      this._isInProgress() &&
+      this.focusModeService.isSessionPaused(),
+  );
+  /** Display only: break time is not stored or tracked anywhere. */
+  readonly breakElapsed = toSignal(
+    toObservable(this.isFlowtimeBreak).pipe(
+      switchMap((isBreak) => {
+        if (!isBreak) return of(0);
+        const startedAt = Date.now();
+        return timer(0, 1000).pipe(map(() => Date.now() - startedAt));
+      }),
+    ),
+    { initialValue: 0 },
+  );
   isShowPlayButton = computed(() => this._isPreparation());
   isShowDurationSlider = computed(
     () =>
@@ -320,6 +343,18 @@ export class FocusModeMainComponent {
       !!projectId &&
       !!this._projectState()?.entities[projectId]?.isLayersEnabled
     );
+  });
+
+  private readonly _layerState = this._store.selectSignal(selectLayerFeatureState);
+  /** The layer whose ▶ created the focused goal, if any. */
+  readonly linkedLayer = computed((): Layer | null => {
+    const taskId = this.isLayersProject() ? this.displayedTask()?.id : null;
+    const state = taskId ? this._layerState() : null;
+    if (!taskId || !state) return null;
+    for (const id of state.ids as string[]) {
+      if (state.entities[id]?.focusTaskId === taskId) return state.entities[id]!;
+    }
+    return null;
   });
 
   addLayer(): void {

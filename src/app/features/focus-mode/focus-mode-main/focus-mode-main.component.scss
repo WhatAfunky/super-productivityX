@@ -92,6 +92,29 @@
   min-width: 0;
 }
 
+// The layer whose ▶ started this goal: its screenshot and title.
+.linked-layer {
+  display: flex;
+  align-items: center;
+  gap: var(--s);
+  max-width: 100%;
+  margin-block-start: var(--s);
+  color: var(--text-color-muted);
+  font-size: var(--font-size-sm);
+}
+
+.linked-layer-thumb {
+  flex: none;
+  width: 96px;
+}
+
+.linked-layer-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 // ========== ROW 3: CLOCK DISPLAY ==========
 // Projected into the layout's flexing clock row, which centers it. This wrapper
 // just stacks the clock face and the overtime message.
@@ -180,7 +203,9 @@
 
 // Pomodoro cycle counter — sits inside the circle, just below the digits.
 // One step less intense than the clock time so it reads as a subtitle.
-.cycle-counter {
+// Flowtime break stopwatch shares the slot (Flowtime has no cycle counter).
+.cycle-counter,
+.break-stopwatch {
   position: absolute;
   top: 65%;
   left: 50%;
@@ -192,6 +217,7 @@
   font-size: var(--s3);
   line-height: 1;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 
   mat-icon {
     font-size: var(--s3);

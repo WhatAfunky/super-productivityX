@@ -336,6 +336,15 @@
         <button
           mat-icon-button
           type="button"
+          [matTooltip]="T.F.LAYER.WORK_ON | translate"
+          [attr.aria-label]="T.F.LAYER.WORK_ON | translate"
+          (click)="workOn(layer)"
+        >
+          <mat-icon>play_arrow</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          type="button"
           class="anchor-toggle"
           [class.isActive]="anchorId() === layer.id"
           [attr.aria-pressed]="anchorId() === layer.id"
@@ -536,6 +545,7 @@
   >
     @for (node of list; track node.key) {
       <li
+        class="node"
         cdkDrag
         [cdkDragDisabled]="!isTreeMode()"
       >
@@ -572,6 +582,16 @@
                 }
               </span>
             </span>
+          </button>
+          <button
+            mat-icon-button
+            type="button"
+            class="row-play"
+            [matTooltip]="T.F.LAYER.WORK_ON | translate"
+            [attr.aria-label]="T.F.LAYER.WORK_ON | translate"
+            (click)="workOn(row.layer)"
+          >
+            <mat-icon>play_arrow</mat-icon>
           </button>
         } @else {
           @let isCollapsed = collapsedGroupIds().has(node.group.id);

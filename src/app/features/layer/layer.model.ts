@@ -29,6 +29,11 @@ export interface Layer {
    * and another device just shows "no image on this device".
    */
   imageId?: string | null;
+  /**
+   * The goal ▶ works on ("Work on: <title>"). The link lives here, not on
+   * Task. Missing, dangling, done or archived → ▶ creates a fresh goal.
+   */
+  focusTaskId?: string | null;
 }
 
 export type LayerState = EntityState<Layer>;

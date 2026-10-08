@@ -65,6 +65,22 @@
       (selectTask)="openTaskSelector()"
       (titleEdited)="updateTaskTitleIfChanged($event.wasChanged, $event.newVal)"
     ></focus-mode-task-row>
+    @if (linkedLayer(); as layer) {
+      <div
+        class="linked-layer"
+        [attr.aria-label]="T.F.LAYER.FOCUS_LAYER | translate"
+      >
+        @if (layer.imageId) {
+          <layer-image
+            class="linked-layer-thumb"
+            [imageId]="layer.imageId"
+            [alt]="layer.title"
+          ></layer-image>
+        }
+        <mat-icon>layers</mat-icon>
+        <span class="linked-layer-title">{{ layer.title }}</span>
+      </div>
+    }
   </div>
 
   <!-- ========== ROW 3: Clock Display (fills, centers the clock) ========== -->
@@ -115,6 +131,15 @@
               {{ timeElapsed() | msToMinuteClockString }}
             }
           </div>
+
+          <!-- Flowtime: while paused, how long the break has lasted -->
+          @if (isFlowtimeBreak()) {
+            <div class="break-stopwatch">
+              <mat-icon>coffee</mat-icon>
+              {{ T.F.FOCUS_MODE.ON_BREAK | translate }} ·
+              {{ breakElapsed() | msToMinuteClockString }}
+            </div>
+          }
 
           <!-- Pomodoro cycle counter, sits below the clock digits -->
           @if (isPomodoro()) {

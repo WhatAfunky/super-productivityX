@@ -290,6 +290,25 @@
   padding: 0;
 }
 
+.node {
+  position: relative;
+}
+
+// ▶ on a layer row: shown on hover or keyboard focus, like task rows.
+.row-play {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-end: var(--s-half);
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity var(--transition-duration-s);
+}
+
+.node:hover > .row-play,
+.row-play:focus-visible {
+  opacity: 1;
+}
+
 .layer-row {
   display: grid;
   grid-template-columns: 64px 1fr;

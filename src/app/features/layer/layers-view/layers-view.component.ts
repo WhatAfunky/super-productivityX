@@ -32,6 +32,7 @@ import { Project } from '../../project/project.model';
 import { Layer } from '../layer.model';
 import { LayerLabel } from '../layer-label.model';
 import { AddLayerDefaults, LayerService } from '../layer.service';
+import { LayerFocusService } from '../layer-focus.service';
 import { LayerExportService } from '../layer-export.service';
 import { Container, LayerOrganizeService, OrganizeItem } from '../layer-organize.service';
 import { LayerGroup } from '../layer-group.model';
@@ -202,6 +203,7 @@ const writeViewMode = (projectId: string, mode: LayerViewMode): void => {
 export class LayersViewComponent {
   private _store = inject(Store);
   private _layerService = inject(LayerService);
+  private _layerFocusService = inject(LayerFocusService);
   private _layerLabelService = inject(LayerLabelService);
   private _sectionService = inject(SectionService);
   private _matDialog = inject(MatDialog);
@@ -749,6 +751,11 @@ export class LayersViewComponent {
     if (id) {
       this.selectedId.set(id);
     }
+  }
+
+  /** ▶: focus on the layer's goal (created on first use). */
+  workOn(layer: Layer): void {
+    void this._layerFocusService.workOn(layer);
   }
 
   async duplicateLayer(layer: Layer): Promise<void> {
