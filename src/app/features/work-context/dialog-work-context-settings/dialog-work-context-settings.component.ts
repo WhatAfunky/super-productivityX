@@ -176,7 +176,10 @@ export class DialogWorkContextSettingsComponent {
           // Layers (mobile) must not turn it off for the user's desktop. Always
           // written there, so Cancel restores "off" for a never-enabled project.
           ...(IS_LAYERS_PLATFORM_SUPPORTED
-            ? { isLayersEnabled: !!p.isLayersEnabled }
+            ? {
+                isLayersEnabled: !!p.isLayersEnabled,
+                isLayerSessionNudgeEnabled: !!p.isLayerSessionNudgeEnabled,
+              }
             : {}),
           theme,
         },

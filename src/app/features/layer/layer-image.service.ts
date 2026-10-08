@@ -82,6 +82,11 @@ export class LayerImageService {
     return blob ? this.save(blob) : null;
   }
 
+  /** The full image itself, or null if it isn't on this device. */
+  async getFull(imageId: string | null | undefined): Promise<Blob | null> {
+    return isValidLayerImageId(imageId) ? this._read(imageId) : null;
+  }
+
   /** blob: URL of the full image, or null if it isn't on this device. */
   async resolveFull(imageId: string | null | undefined): Promise<string | null> {
     if (!isValidLayerImageId(imageId)) return null;

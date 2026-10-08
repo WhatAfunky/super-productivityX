@@ -25,6 +25,13 @@ export interface ProjectBasicCfg {
   isEnableBacklog?: boolean;
   // Opt-in Layers view for this project (desktop only). Absent → off.
   isLayersEnabled?: boolean;
+  // Layers method: what the finished thing feels like (free text).
+  layerVision?: string;
+  // The anchor layer ("north star"). A pointer, so changing the anchor is one
+  // project update; a dangling id (layer deleted) means "no anchor".
+  layerAnchorId?: string | null;
+  // Opt-in: after a focus session, ask "did something new come to exist?".
+  isLayerSessionNudgeEnabled?: boolean;
   taskIds: string[];
   backlogTaskIds: string[];
   noteIds: string[];

@@ -4,7 +4,12 @@ import { Store } from '@ngrx/store';
 import { filter, map, tap, withLatestFrom } from 'rxjs/operators';
 import { LOCAL_ACTIONS } from '../../../util/local-actions.token';
 import { TaskSharedActions } from '../../../root-store/meta/task-shared.actions';
-import { selectTaskEntities } from '../../tasks/store/task.selectors';
+import {
+  selectCurrentTaskId,
+  selectTaskEntities,
+} from '../../tasks/store/task.selectors';
+import { completeFocusSession } from '../../focus-mode/store/focus-mode.actions';
+import { selectPausedTaskId } from '../../focus-mode/store/focus-mode.selectors';
 import { selectProjectFeatureState } from '../../project/store/project.selectors';
 import { TaskMultiSelectService } from '../../tasks/task-multi-select.service';
 import { SnackService } from '../../../core/snack/snack.service';
@@ -48,6 +53,44 @@ export class LayerUiEffects {
         tap((projectId) =>
           this._snackService.open({
             msg: T.F.LAYER.GOAL_DONE_SNACK,
+            ico: 'layers',
+            actionStr: T.F.LAYER.NAME_THE_LAYER,
+            actionFn: () => void this._layerService.openAddLayerDialog(projectId),
+          }),
+        ),
+      ),
+    { dispatch: false },
+  );
+
+  /**
+   * Opt-in per project: when a focus session ends, ask whether something new
+   * came to exist. Reads the focused goal before focus mode clears it (the
+   * paused task as fallback).
+   */
+  offerLayerAfterFocusSession$ = createEffect(
+    () =>
+      this._actions$.pipe(
+        ofType(completeFocusSession),
+        filter(() => IS_LAYERS_PLATFORM_SUPPORTED),
+        withLatestFrom(
+          this._store.select(selectCurrentTaskId),
+          this._store.select(selectPausedTaskId),
+          this._store.select(selectTaskEntities),
+          this._store.select(selectProjectFeatureState),
+        ),
+        map(([, currentId, pausedId, taskEntities, projectState]) => {
+          const focused = taskEntities[currentId ?? pausedId ?? ''];
+          const project = focused?.projectId
+            ? projectState.entities[focused.projectId]
+            : undefined;
+          return project?.isLayersEnabled && project.isLayerSessionNudgeEnabled
+            ? project.id
+            : null;
+        }),
+        filter((projectId): projectId is string => !!projectId),
+        tap((projectId) =>
+          this._snackService.open({
+            msg: T.F.LAYER.SESSION_NUDGE_SNACK,
             ico: 'layers',
             actionStr: T.F.LAYER.NAME_THE_LAYER,
             actionFn: () => void this._layerService.openAddLayerDialog(projectId),

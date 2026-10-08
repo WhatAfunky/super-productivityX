@@ -32,13 +32,19 @@ import { Project } from '../../project/project.model';
 import { Layer } from '../layer.model';
 import { LayerLabel } from '../layer-label.model';
 import { AddLayerDefaults, LayerService } from '../layer.service';
+import { LayerExportService } from '../layer-export.service';
+import { ProjectService } from '../../project/project.service';
 import { LayerLabelService } from '../layer-label.service';
 import { selectLayerLabelEntities } from '../store/layer-label.selectors';
 import { getLayerLabelColor, resolveLayerLabel } from '../layer-label.util';
 import { SectionService } from '../../section/section.service';
 import { Section } from '../../section/section.model';
 import { WorkContextType } from '../../work-context/work-context.model';
-import { getImageFromDataTransfer, MAX_LAYER_TITLE_LENGTH } from '../layer.util';
+import {
+  getImageFromDataTransfer,
+  MAX_LAYER_TITLE_LENGTH,
+  MAX_LAYER_VISION_LENGTH,
+} from '../layer.util';
 import { LayerImageComponent } from '../layer-image/layer-image.component';
 import { LayerLabelPillComponent } from '../layer-label-pill/layer-label-pill.component';
 import {
@@ -189,6 +195,8 @@ export class LayersViewComponent {
   private _matDialog = inject(MatDialog);
   private _workContextService = inject(WorkContextService);
   private _taskService = inject(TaskService);
+  private _projectService = inject(ProjectService);
+  private _layerExportService = inject(LayerExportService);
 
   readonly project = input.required<Project>();
 
@@ -203,6 +211,8 @@ export class LayersViewComponent {
 
   private readonly _fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
   private readonly _titleInput = viewChild<ElementRef<HTMLInputElement>>('titleInput');
+  private readonly _visionInput =
+    viewChild<ElementRef<HTMLTextAreaElement>>('visionInput');
   private readonly _rowButtons = viewChildren<ElementRef<HTMLButtonElement>>('rowButton');
 
   private readonly _projectId$ = toObservable(computed(() => this.project().id));
@@ -261,6 +271,23 @@ export class LayersViewComponent {
     () => this._rows().find((r) => r.layer.id === this.selectedId()) ?? null,
   );
   readonly selectedLayer = computed(() => this.selectedRow()?.layer ?? null);
+
+  // ── Vision & anchor (the Layers method's north star) ──────────────────────
+  readonly MAX_VISION_LENGTH = MAX_LAYER_VISION_LENGTH;
+  readonly isEditingVision = signal(false);
+  readonly isComparing = signal(false);
+  readonly isExporting = signal(false);
+  /** The anchor's row; null when none is set or it was deleted. */
+  readonly anchorRow = computed(() => {
+    const anchorId = this.project().layerAnchorId;
+    return (anchorId && this._rows().find((r) => r.layer.id === anchorId)) || null;
+  });
+  readonly anchorId = computed(() => this.anchorRow()?.layer.id ?? null);
+  /** Compare is offered when another layer is selected and the anchor has an image. */
+  readonly canCompare = computed(() => {
+    const anchor = this.anchorRow();
+    return !!anchor?.layer.imageId && anchor.layer.id !== this.selectedId();
+  });
 
   constructor() {
     // Per project: restore the remembered grouping, and let Add layer from
@@ -378,6 +405,49 @@ export class LayersViewComponent {
   readonly isFolderReorderable = computed(
     () => this.viewMode() === 'folder' && !this.isFiltering(),
   );
+
+  editVision(): void {
+    this.isEditingVision.set(true);
+    // After the textarea renders: put the cursor in it.
+    setTimeout(() => this._visionInput()?.nativeElement.focus());
+  }
+
+  saveVision(ev: Event): void {
+    const value = (ev.target as HTMLTextAreaElement).value
+      .trim()
+      .slice(0, MAX_LAYER_VISION_LENGTH);
+    this.isEditingVision.set(false);
+    if (value !== (this.project().layerVision ?? '')) {
+      // Silent: it is the user's own text, not a settings change worth a snack.
+      this._projectService.update(this.project().id, { layerVision: value }, true);
+    }
+  }
+
+  toggleAnchor(layer: Layer): void {
+    const isAnchor = this.anchorId() === layer.id;
+    this._projectService.update(
+      this.project().id,
+      { layerAnchorId: isAnchor ? null : layer.id },
+      true,
+    );
+  }
+
+  toggleCompare(): void {
+    this.isComparing.update((v) => !v);
+  }
+
+  async exportScreenshots(): Promise<void> {
+    if (this.isExporting()) return;
+    this.isExporting.set(true);
+    try {
+      await this._layerExportService.exportProject(
+        this.project().id,
+        this.project().title,
+      );
+    } finally {
+      this.isExporting.set(false);
+    }
+  }
 
   toggleGoals(): void {
     const isShown = !this.isGoalsShown();

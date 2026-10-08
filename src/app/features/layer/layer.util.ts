@@ -1,6 +1,7 @@
 import { IS_NATIVE_PLATFORM } from '../../util/is-native-platform';
 
 export const MAX_LAYER_TITLE_LENGTH = 200;
+export const MAX_LAYER_VISION_LENGTH = 2000;
 
 /**
  * Authoritative title normalizer, applied in the reducer so it also holds

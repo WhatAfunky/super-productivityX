@@ -61,6 +61,15 @@ export const buildWorkContextSettingsFormCfg = (
           description: T.F.LAYER.D_ENABLE_LAYERS,
         },
       });
+      basicFields.push({
+        key: 'isLayerSessionNudgeEnabled',
+        type: 'checkbox',
+        hideExpression: '!model.isLayersEnabled',
+        templateOptions: {
+          label: T.F.LAYER.L_SESSION_NUDGE,
+          description: T.F.LAYER.D_SESSION_NUDGE,
+        },
+      });
     }
   }
 

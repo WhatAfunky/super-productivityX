@@ -58,6 +58,103 @@
   }
 }
 
+.vision-card {
+  margin-bottom: var(--s2);
+  padding-bottom: var(--s);
+  border-bottom: 1px solid var(--divider-color);
+}
+
+.vision-edit-btn {
+  margin-inline-start: auto;
+}
+
+.vision-text {
+  margin: var(--s-half) 0 var(--s);
+  white-space: pre-wrap;
+  // Long visions stay readable without pushing the list away; edit shows all.
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.vision-input {
+  width: 100%;
+  margin: var(--s-half) 0 var(--s);
+  resize: vertical;
+}
+
+.anchor-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s);
+  min-width: 0;
+}
+
+.anchor-ico {
+  flex: none;
+  width: var(--s2);
+  height: var(--s2);
+  font-size: var(--s2);
+  color: var(--c-accent);
+  vertical-align: text-bottom;
+}
+
+.anchor-link {
+  display: flex;
+  align-items: center;
+  gap: var(--s);
+  min-width: 0;
+  padding: var(--s-quarter) var(--s-half);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--state-hover);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+}
+
+.anchor-thumb {
+  flex: none;
+  width: var(--s5);
+  height: var(--s3);
+}
+
+.anchor-empty {
+  color: var(--text-color-muted);
+  font-size: var(--font-size-sm);
+}
+
+.anchor-toggle.isActive {
+  color: var(--c-accent);
+}
+
+// Side by side: the selected layer and the anchor it tries to match.
+.compare-anchor {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--s-half);
+  margin: 0;
+
+  figcaption {
+    display: flex;
+    align-items: center;
+    gap: var(--s-half);
+    color: var(--text-color-muted);
+    font-size: var(--font-size-sm);
+  }
+}
+
 .goals-strip {
   margin-bottom: var(--s2);
   padding-bottom: var(--s);
@@ -289,6 +386,7 @@
 
 .drop-zone {
   display: flex;
+  gap: var(--s);
   flex: 1;
   min-height: 240px;
   border-radius: var(--radius-sm);

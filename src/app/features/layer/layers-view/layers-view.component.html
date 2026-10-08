@@ -1,6 +1,70 @@
 <div class="layers-view">
   <section class="list-pane">
     <section
+      class="vision-card"
+      [attr.aria-label]="T.F.LAYER.VISION | translate"
+    >
+      <div class="goals-head">
+        <span class="goals-title">{{ T.F.LAYER.VISION | translate }}</span>
+        @if (!isEditingVision()) {
+          <button
+            mat-icon-button
+            type="button"
+            class="vision-edit-btn"
+            [matTooltip]="T.F.LAYER.VISION_EDIT | translate"
+            [attr.aria-label]="T.F.LAYER.VISION_EDIT | translate"
+            (click)="editVision()"
+          >
+            <mat-icon>edit</mat-icon>
+          </button>
+        }
+      </div>
+      @if (isEditingVision()) {
+        <textarea
+          #visionInput
+          class="field vision-input"
+          rows="4"
+          [value]="project().layerVision ?? ''"
+          [attr.maxlength]="MAX_VISION_LENGTH"
+          [placeholder]="T.F.LAYER.VISION_PLACEHOLDER | translate"
+          [attr.aria-label]="T.F.LAYER.VISION | translate"
+          (blur)="saveVision($event)"
+        ></textarea>
+      } @else if (project().layerVision) {
+        <p
+          class="vision-text"
+          (dblclick)="editVision()"
+        >
+          {{ project().layerVision }}
+        </p>
+      } @else {
+        <p class="empty">{{ T.F.LAYER.VISION_EMPTY | translate }}</p>
+      }
+      <div
+        class="anchor-row"
+        [matTooltip]="T.F.LAYER.ANCHOR_HINT | translate"
+      >
+        <mat-icon class="anchor-ico">star</mat-icon>
+        <span class="goals-title">{{ T.F.LAYER.ANCHOR | translate }}</span>
+        @if (anchorRow(); as anchor) {
+          <button
+            type="button"
+            class="anchor-link"
+            (click)="select(anchor.layer)"
+          >
+            <layer-image
+              class="anchor-thumb"
+              [imageId]="anchor.layer.imageId"
+            ></layer-image>
+            <span class="layer-title">{{ anchor.layer.title }}</span>
+          </button>
+        } @else {
+          <span class="anchor-empty">{{ T.F.LAYER.NO_ANCHOR | translate }}</span>
+        }
+      </div>
+    </section>
+
+    <section
       class="goals-strip"
       [attr.aria-label]="T.F.LAYER.GOALS_TITLE | translate"
     >
@@ -73,6 +137,16 @@
       >
         <mat-icon>label</mat-icon>
         {{ T.F.LAYER.MANAGE_LABELS | translate }}
+      </button>
+      <button
+        mat-icon-button
+        type="button"
+        [disabled]="isExporting() || !layers().length"
+        [matTooltip]="T.F.LAYER.EXPORT | translate"
+        [attr.aria-label]="T.F.LAYER.EXPORT | translate"
+        (click)="exportScreenshots()"
+      >
+        <mat-icon>download</mat-icon>
       </button>
     </div>
 
@@ -225,6 +299,24 @@
         <button
           mat-icon-button
           type="button"
+          class="anchor-toggle"
+          [class.isActive]="anchorId() === layer.id"
+          [attr.aria-pressed]="anchorId() === layer.id"
+          [matTooltip]="
+            (anchorId() === layer.id ? T.F.LAYER.UNSET_ANCHOR : T.F.LAYER.SET_ANCHOR)
+              | translate
+          "
+          [attr.aria-label]="
+            (anchorId() === layer.id ? T.F.LAYER.UNSET_ANCHOR : T.F.LAYER.SET_ANCHOR)
+              | translate
+          "
+          (click)="toggleAnchor(layer)"
+        >
+          <mat-icon>{{ anchorId() === layer.id ? 'star' : 'star_border' }}</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          type="button"
           [matTooltip]="T.F.LAYER.DUPLICATE | translate"
           [attr.aria-label]="T.F.LAYER.DUPLICATE | translate"
           (click)="duplicateLayer(layer)"
@@ -306,6 +398,21 @@
           [alt]="layer.title"
           [emptyText]="T.F.LAYER.PASTE_HINT | translate"
         ></layer-image>
+        @if (isComparing() && canCompare()) {
+          @let anchor = anchorRow()!;
+          <figure class="compare-anchor">
+            <layer-image
+              class="preview-image"
+              variant="full"
+              [imageId]="anchor.layer.imageId"
+              [alt]="anchor.layer.title"
+            ></layer-image>
+            <figcaption>
+              <mat-icon class="anchor-ico">star</mat-icon>
+              {{ anchor.layer.title }}
+            </figcaption>
+          </figure>
+        }
       </div>
 
       <div class="preview-actions">
@@ -317,6 +424,17 @@
           <mat-icon>image</mat-icon>
           {{ T.F.LAYER.CHOOSE_IMAGE | translate }}
         </button>
+        @if (canCompare()) {
+          <button
+            mat-stroked-button
+            type="button"
+            [attr.aria-pressed]="isComparing()"
+            (click)="toggleCompare()"
+          >
+            <mat-icon>compare</mat-icon>
+            {{ (isComparing() ? T.F.LAYER.COMPARE_OFF : T.F.LAYER.COMPARE) | translate }}
+          </button>
+        }
         @if (layer.imageId) {
           <button
             mat-button
@@ -362,7 +480,12 @@
             [imageId]="row.layer.imageId"
           ></layer-image>
           <span class="layer-text">
-            <span class="layer-title">{{ row.layer.title }}</span>
+            <span class="layer-title">
+              @if (row.layer.id === anchorId()) {
+                <mat-icon class="anchor-ico">star</mat-icon>
+              }
+              {{ row.layer.title }}
+            </span>
             <span class="layer-meta">
               {{ row.layer.createdAt | localeDate: 'mediumDate' }}
               @if (row.label && viewMode() !== 'label') {

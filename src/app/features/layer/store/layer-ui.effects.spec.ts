@@ -6,7 +6,12 @@ import { signal } from '@angular/core';
 import { LayerUiEffects } from './layer-ui.effects';
 import { LOCAL_ACTIONS } from '../../../util/local-actions.token';
 import { TaskSharedActions } from '../../../root-store/meta/task-shared.actions';
-import { selectTaskEntities } from '../../tasks/store/task.selectors';
+import {
+  selectCurrentTaskId,
+  selectTaskEntities,
+} from '../../tasks/store/task.selectors';
+import { completeFocusSession } from '../../focus-mode/store/focus-mode.actions';
+import { selectPausedTaskId } from '../../focus-mode/store/focus-mode.selectors';
 import { selectProjectFeatureState } from '../../project/store/project.selectors';
 import { TaskMultiSelectService } from '../../tasks/task-multi-select.service';
 import { SnackService } from '../../../core/snack/snack.service';
@@ -22,9 +27,14 @@ describe('LayerUiEffects', () => {
   let layerService: jasmine.SpyObj<LayerService>;
   const isBulk = signal(false);
 
-  const projects = (isLayersEnabled: boolean): ProjectState => ({
+  const projects = (
+    isLayersEnabled: boolean,
+    isLayerSessionNudgeEnabled = false,
+  ): ProjectState => ({
     ids: ['p1'],
-    entities: { p1: { id: 'p1', isLayersEnabled } as Project },
+    entities: {
+      p1: { id: 'p1', isLayersEnabled, isLayerSessionNudgeEnabled } as Project,
+    },
   });
   const tasks = {
     goal: { id: 'goal', projectId: 'p1', parentId: undefined } as unknown as Task,
@@ -59,9 +69,12 @@ describe('LayerUiEffects', () => {
     store = TestBed.inject(MockStore);
     store.overrideSelector(selectTaskEntities, tasks);
     store.overrideSelector(selectProjectFeatureState, projects(true));
+    store.overrideSelector(selectCurrentTaskId, null);
+    store.overrideSelector(selectPausedTaskId, null);
     const effects = TestBed.inject(LayerUiEffects);
     effects.offerLayerOnGoalDone$.subscribe();
     effects.deleteImagesOfDeletedProject$.subscribe();
+    effects.offerLayerAfterFocusSession$.subscribe();
   });
 
   it('offers "Name the layer" when a goal in a Layers project is completed', () => {
@@ -91,5 +104,35 @@ describe('LayerUiEffects', () => {
       TaskSharedActions.deleteProject({ projectId: 'p1', noteIds: [], allTaskIds: [] }),
     );
     expect(layerService.deleteOrphanedImages).toHaveBeenCalledTimes(1);
+  });
+
+  describe('after a focus session', () => {
+    const sessionDone = (): void =>
+      actions$.next(completeFocusSession({ isManual: true }));
+
+    it('asks "Name the layer" when the project opted in', () => {
+      store.overrideSelector(selectProjectFeatureState, projects(true, true));
+      store.overrideSelector(selectCurrentTaskId, 'goal');
+      store.refreshState();
+      sessionDone();
+      expect(snack.open).toHaveBeenCalledTimes(1);
+      (snack.open.calls.mostRecent().args[0] as SnackParams).actionFn!();
+      expect(layerService.openAddLayerDialog).toHaveBeenCalledOnceWith('p1');
+    });
+
+    it('falls back to the paused goal', () => {
+      store.overrideSelector(selectProjectFeatureState, projects(true, true));
+      store.overrideSelector(selectPausedTaskId, 'goal');
+      store.refreshState();
+      sessionDone();
+      expect(snack.open).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays quiet unless the project opted in (off by default)', () => {
+      store.overrideSelector(selectCurrentTaskId, 'goal');
+      store.refreshState();
+      sessionDone();
+      expect(snack.open).not.toHaveBeenCalled();
+    });
   });
 });

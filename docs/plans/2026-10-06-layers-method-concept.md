@@ -309,3 +309,12 @@ What shipped on `feat/layers-v0`, and where it differs from the plan above:
 - **View memory:** the view mode is remembered per project in localStorage (`SUP_LAYERS_VIEW_MODE_BY_PROJECT`).
 - **Shortcut:** `addNewLayer` in the keyboard config (optional key), defaulting to `Meta+N` on macOS and `Ctrl+N` elsewhere (the app's "Ctrl" is the physical Control key). It works in Layers projects, and its folder and label default to the Layers view's selection when that view is open (`registerSelectionDefaults`). `LayerService` is resolved lazily in the shortcut service.
 - **Verified:** Angular suite 16,881 passing (cold cache), layer specs 57. Every flow above was also exercised in the browser, including a real mouse drag of a folder.
+
+## 15. v2 step 1 (method) as built (2026-10-08)
+
+- **Vision:** `Project.layerVision?` (free text, at most 2000 chars, enforced in the UI). A Vision card sits at the top of the Layers view: click the pencil to edit, and it saves on blur, silently. Long text is clamped to 5 lines.
+- **Anchor:** `Project.layerAnchorId?`, a single pointer on the project, so changing the anchor is one project update. A dangling id means no anchor. Toggle it with the ★ in the preview. The anchor shows in the Vision card (click to select it) and as a ★ on its row.
+- **Compare:** with a non-anchor layer selected and an anchor that has a screenshot, **Compare with anchor** shows both full images side by side.
+- **Export:** `LayerExportService` plus an in-repo store-only ZIP writer (`zip-store.util.ts`, CRC-32, UTF-8 names, no new dependency). It exports this device's screenshots oldest-first as `NNN YYYY-MM-DD <title>.<ext>`, with an `index.md` listing every layer (folder, label, title, file). Downloaded via a blob link; Electron shows its default save dialog. With no screenshots on the device it shows a snack instead.
+- **Session nudge:** `Project.isLayerSessionNudgeEnabled?`, off by default, in project settings under Layers ("Ask after focus sessions"). `LayerUiEffects.offerLayerAfterFocusSession$` (`LOCAL_ACTIONS`, `completeFocusSession`) reads the focused goal, or the paused one as a fallback, and offers **Name the layer**.
+- **Verified:** Angular suite 16,889 passing (cold cache), layer specs 65; the ZIP is read back and CRC-checked in tests. Every flow above was also exercised in the browser.
