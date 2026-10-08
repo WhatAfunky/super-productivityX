@@ -27,12 +27,20 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Project } from '../../project/project.model';
 import { Layer } from '../layer.model';
 import { LayerLabel } from '../layer-label.model';
 import { AddLayerDefaults, LayerService } from '../layer.service';
 import { LayerExportService } from '../layer-export.service';
+import { Container, LayerOrganizeService, OrganizeItem } from '../layer-organize.service';
+import { LayerGroup } from '../layer-group.model';
+import {
+  buildFolderTree,
+  buildGroupIndex,
+  canGroupUnder,
+  TreeNode,
+} from '../layer-group.util';
 import { ProjectService } from '../../project/project.service';
 import { LayerLabelService } from '../layer-label.service';
 import { selectLayerLabelEntities } from '../store/layer-label.selectors';
@@ -76,17 +84,21 @@ interface LayerRow {
   labelColor: string | null;
 }
 
-interface LayerGroup {
+/** One section of the list: a folder, a label, or the whole timeline. */
+interface ListSection {
   key: string;
-  /** Section title; empty for unfiled / timeline (translated in the template). */
+  /** Folder title; empty for unfiled / timeline (translated in the template). */
   title: string;
-  /** Set when grouping by label: the group header shows the pill. */
+  /** Set when grouping by label: the header shows the pill. */
   label: LayerLabel | null;
   isFallbackGroup: boolean;
   isExpanded: boolean;
   total: number;
-  shown: readonly LayerRow[];
+  /** Top-level items shown (layers, and in the folder tree also groups). */
+  shown: readonly TreeNode<LayerRow>[];
   hiddenCount: number;
+  /** Where its top-level items live (for drag-and-drop ordering). */
+  container: Container;
 }
 
 interface LabelChip {
@@ -197,6 +209,8 @@ export class LayersViewComponent {
   private _taskService = inject(TaskService);
   private _projectService = inject(ProjectService);
   private _layerExportService = inject(LayerExportService);
+  private _layerOrganizeService = inject(LayerOrganizeService);
+  private _translateService = inject(TranslateService);
 
   readonly project = input.required<Project>();
 
@@ -240,6 +254,20 @@ export class LayersViewComponent {
   );
 
   private readonly _labelEntities = this._store.selectSignal(selectLayerLabelEntities);
+
+  /** The project's layer groups, resolved (parents, depths, folders). */
+  readonly layerGroups = toSignal(
+    this._projectId$.pipe(
+      switchMap((id) => this._layerOrganizeService.getGroupsByProjectId$(id)),
+    ),
+    { initialValue: [] as readonly LayerGroup[] },
+  );
+  private readonly _groupIndex = computed(() => buildGroupIndex(this.layerGroups()));
+  /** Collapsed groups (a view state for this session, not saved). */
+  readonly collapsedGroupIds = signal<ReadonlySet<string>>(new Set());
+  /** Multi-selection for grouping: node keys `l:<layerId>` / `g:<groupId>`. */
+  readonly selectedKeys = signal<ReadonlySet<string>>(new Set());
+  private _lastClickedKey: string | null = null;
 
   /**
    * Open goals/tasks of the project, read-only apart from completing them.
@@ -330,18 +358,38 @@ export class LayersViewComponent {
     }));
   });
 
-  readonly groups = computed<LayerGroup[]>(() => {
+  readonly groups = computed<ListSection[]>(() => {
     const rows = this._visibleRows();
     const showAll = this._showAllKeys();
     const collapsed = this._collapsedKeys();
     // While searching or filtering, show every hit instead of the newest 8.
     const isFiltering = this.isFiltering();
+    const isTree = this.isTreeMode();
+    const index = this._groupIndex();
+    const layerGroups = this.layerGroups();
+    const flat = (list: readonly LayerRow[]): TreeNode<LayerRow>[] =>
+      list.map((row) => ({ kind: 'layer', row, key: `l:${row.layer.id}` }));
     const makeGroup = (
       key: string,
       list: readonly LayerRow[],
-      opts: { title?: string; label?: LayerLabel; isFallbackGroup?: boolean } = {},
-    ): LayerGroup => {
+      opts: {
+        title?: string;
+        label?: LayerLabel;
+        isFallbackGroup?: boolean;
+        sectionId?: string | null;
+      } = {},
+    ): ListSection => {
       const isShowAll = isFiltering || showAll.has(key);
+      const sectionId = opts.sectionId ?? null;
+      // The folder tree (groups + manual order) only in By folder, unfiltered.
+      const nodes =
+        isTree && opts.sectionId !== undefined
+          ? buildFolderTree(
+              list,
+              layerGroups.filter((g) => (index.folderOf.get(g.id) ?? null) === sectionId),
+              index,
+            )
+          : flat(list);
       return {
         key,
         title: opts.title ?? '',
@@ -349,8 +397,9 @@ export class LayersViewComponent {
         isFallbackGroup: !!opts.isFallbackGroup,
         isExpanded: !collapsed.has(key),
         total: list.length,
-        shown: isShowAll ? list : list.slice(0, NEWEST_LAYERS_SHOWN),
-        hiddenCount: isShowAll ? 0 : Math.max(0, list.length - NEWEST_LAYERS_SHOWN),
+        shown: isShowAll ? nodes : nodes.slice(0, NEWEST_LAYERS_SHOWN),
+        hiddenCount: isShowAll ? 0 : Math.max(0, nodes.length - NEWEST_LAYERS_SHOWN),
+        container: { sectionId, groupId: null },
       };
     };
 
@@ -362,10 +411,17 @@ export class LayersViewComponent {
     // Rows arrive newest first, so each bucket stays newest first.
     const buckets = new Map<string, LayerRow[]>();
     const fallback: LayerRow[] = [];
+    // A grouped layer lives in its group's folder.
+    const folderOfRow = (r: LayerRow): string | null => {
+      const g = r.layer.groupId;
+      return g && index.byId.has(g)
+        ? (index.folderOf.get(g) ?? null)
+        : (r.layer.sectionId ?? null);
+    };
     const keyOf =
       mode === 'label'
         ? (r: LayerRow): string | null => r.label?.id ?? null
-        : (r: LayerRow): string | null => r.layer.sectionId ?? null;
+        : folderOfRow;
     const known =
       mode === 'label'
         ? this.labels().map((l) => l.id)
@@ -386,20 +442,64 @@ export class LayersViewComponent {
       mode === 'label'
         ? this.labels().map((l) => makeGroup(l.id, buckets.get(l.id)!, { label: l }))
         : this.sections().map((s) =>
-            makeGroup(s.id, buckets.get(s.id)!, { title: s.title }),
+            makeGroup(s.id, buckets.get(s.id)!, { title: s.title, sectionId: s.id }),
           );
     if (fallback.length) {
-      groups.push(makeGroup(FALLBACK_KEY, fallback, { isFallbackGroup: true }));
+      groups.push(
+        makeGroup(FALLBACK_KEY, fallback, {
+          isFallbackGroup: true,
+          sectionId: mode === 'label' ? undefined : null,
+        }),
+      );
     }
     return isHidingEmpty ? groups.filter((g) => g.total > 0) : groups;
   });
 
   /** The rows currently on screen, top to bottom (for keyboard navigation). */
-  private readonly _navRows = computed<LayerRow[]>(() =>
-    this.groups()
+  private readonly _navRows = computed<LayerRow[]>(() => {
+    const collapsedGroups = this.collapsedGroupIds();
+    const flatten = (nodes: readonly TreeNode<LayerRow>[]): LayerRow[] =>
+      nodes.flatMap((n) =>
+        n.kind === 'layer'
+          ? [n.row]
+          : collapsedGroups.has(n.group.id)
+            ? []
+            : flatten(n.children),
+      );
+    return this.groups()
       .filter((g) => this.viewMode() === 'time' || g.isExpanded)
-      .flatMap((g) => g.shown),
+      .flatMap((g) => flatten(g.shown));
+  });
+
+  /** Groups and drag-to-order live in the folder view, when nothing is filtered. */
+  readonly isTreeMode = computed(
+    () => this.viewMode() === 'folder' && !this.isFiltering(),
   );
+
+  /**
+   * What the multi-selection can do: grouping needs ≥ 2 siblings (same folder
+   * and parent group) and must stay within the 3-level limit.
+   */
+  readonly selectionInfo = computed(() => {
+    const keys = [...this.selectedKeys()];
+    const items = keys
+      .map((k) => this._itemForKey(k))
+      .filter((x): x is NonNullable<typeof x> => !!x);
+    const containers = new Set(
+      items.map((i) => `${i.container.sectionId}|${i.container.groupId}`),
+    );
+    const isSiblings = items.length >= 2 && containers.size === 1;
+    const canGroup =
+      isSiblings &&
+      canGroupUnder(
+        items[0].container.groupId,
+        items
+          .filter((i) => i.item.kind === 'group')
+          .map((i) => (i.item as { group: LayerGroup }).group.id),
+        this._groupIndex(),
+      );
+    return { count: items.length, isSiblings, canGroup, items };
+  });
 
   /** Folder reordering is offered in the folder view when nothing is filtered. */
   readonly isFolderReorderable = computed(
@@ -447,6 +547,140 @@ export class LayersViewComponent {
     } finally {
       this.isExporting.set(false);
     }
+  }
+
+  // ── Selection, groups and order ──────────────────────────────────────────
+
+  /** Click: select. Cmd/Ctrl-click: add/remove. Shift-click: range among siblings. */
+  onNodeClick(
+    node: TreeNode<LayerRow>,
+    siblings: readonly TreeNode<LayerRow>[],
+    ev: MouseEvent,
+  ): void {
+    const key = node.key;
+    if (ev.metaKey || ev.ctrlKey) {
+      this.selectedKeys.update((keys) => {
+        const next = new Set(keys);
+        if (next.has(key)) {
+          next.delete(key);
+        } else {
+          next.add(key);
+        }
+        return next;
+      });
+    } else if (ev.shiftKey && this._lastClickedKey) {
+      const from = siblings.findIndex((n) => n.key === this._lastClickedKey);
+      const to = siblings.findIndex((n) => n.key === key);
+      if (from >= 0 && to >= 0) {
+        const [a, b] = from < to ? [from, to] : [to, from];
+        this.selectedKeys.set(new Set(siblings.slice(a, b + 1).map((n) => n.key)));
+      }
+    } else {
+      // A plain click selects just this item; Cmd/Shift-clicks build on it.
+      this.selectedKeys.set(new Set([key]));
+    }
+    this._lastClickedKey = key;
+    if (node.kind === 'layer') {
+      this.selectedId.set(node.row.layer.id);
+    }
+  }
+
+  clearSelection(): void {
+    this.selectedKeys.set(new Set());
+  }
+
+  toggleGroupCollapsed(groupId: string): void {
+    this.collapsedGroupIds.update((ids) => {
+      const next = new Set(ids);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  }
+
+  async groupSelection(): Promise<void> {
+    const info = this.selectionInfo();
+    if (!info.canGroup) return;
+    const name = await firstValueFrom(
+      this._matDialog
+        .open(DialogPromptComponent, {
+          restoreFocus: true,
+          data: {
+            placeholder: T.F.LAYER.GROUP_NAME,
+            txtValue: this._translateService.instant(T.F.LAYER.GROUP_DEFAULT_NAME),
+          },
+        })
+        .afterClosed(),
+    );
+    if (typeof name !== 'string' || !name.trim()) return;
+    await this._layerOrganizeService.group(
+      this.project().id,
+      info.items[0].container,
+      info.items.map((i) => i.item),
+      name,
+    );
+    this.clearSelection();
+  }
+
+  async renameGroup(group: LayerGroup): Promise<void> {
+    const name = await firstValueFrom(
+      this._matDialog
+        .open(DialogPromptComponent, {
+          restoreFocus: true,
+          data: { placeholder: T.F.LAYER.GROUP_NAME, txtValue: group.name },
+        })
+        .afterClosed(),
+    );
+    if (typeof name === 'string' && name.trim()) {
+      this._layerOrganizeService.rename(group.id, name);
+    }
+  }
+
+  ungroup(group: LayerGroup): void {
+    void this._layerOrganizeService.ungroup(group);
+  }
+
+  /** Drag-and-drop within one folder or group. */
+  dropNode(container: Container, event: CdkDragDrop<unknown>): void {
+    if (event.previousIndex === event.currentIndex) return;
+    void this._layerOrganizeService.move(
+      this.project().id,
+      container,
+      event.previousIndex,
+      event.currentIndex,
+    );
+  }
+
+  /** The tree node behind a selection key, with the container it sits in. */
+  private _itemForKey(key: string): { item: OrganizeItem; container: Container } | null {
+    const index = this._groupIndex();
+    const id = key.slice(2);
+    if (key.startsWith('g:')) {
+      const group = index.byId.get(id);
+      if (!group) return null;
+      return {
+        item: { kind: 'group', group },
+        container: {
+          sectionId: index.folderOf.get(id) ?? null,
+          groupId: index.parentOf.get(id) ?? null,
+        },
+      };
+    }
+    const layer = this.layers().find((l) => l.id === id);
+    if (!layer) return null;
+    const groupId = layer.groupId && index.byId.has(layer.groupId) ? layer.groupId : null;
+    return {
+      item: { kind: 'layer', layer },
+      container: {
+        sectionId: groupId
+          ? (index.folderOf.get(groupId) ?? null)
+          : (layer.sectionId ?? null),
+        groupId,
+      },
+    };
   }
 
   toggleGoals(): void {
@@ -585,7 +819,7 @@ export class LayersViewComponent {
   moveToSection(layer: Layer, ev: Event): void {
     const sectionId = (ev.target as HTMLSelectElement).value || null;
     if (sectionId !== (layer.sectionId ?? null)) {
-      this._layerService.updateLayer(layer.id, { sectionId });
+      void this._layerService.moveToFolder(layer, sectionId);
     }
   }
 

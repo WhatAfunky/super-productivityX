@@ -191,6 +191,43 @@
       </div>
     }
 
+    @if (selectionInfo().count >= 2) {
+      <div
+        class="selection-bar"
+        role="status"
+      >
+        <span>{{ T.F.LAYER.N_SELECTED | translate: { nr: selectionInfo().count } }}</span>
+        <span class="spacer"></span>
+        @if (selectionInfo().canGroup) {
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            (click)="groupSelection()"
+          >
+            <mat-icon>create_new_folder</mat-icon>
+            {{ T.F.LAYER.GROUP | translate }}
+          </button>
+        } @else {
+          <span class="selection-hint">
+            {{
+              (selectionInfo().isSiblings
+                ? T.F.LAYER.GROUP_HINT_DEPTH
+                : T.F.LAYER.GROUP_HINT_SIBLINGS
+              ) | translate
+            }}
+          </span>
+        }
+        <button
+          mat-button
+          type="button"
+          (click)="clearSelection()"
+        >
+          {{ T.F.LAYER.CLEAR_SELECTION | translate }}
+        </button>
+      </div>
+    }
+
     @if (!layers().length) {
       <p class="empty">{{ T.F.LAYER.EMPTY | translate }}</p>
     } @else if (isFiltering() && !groups()[0]?.total) {
@@ -462,41 +499,14 @@
   #rows
   let-group
 >
-  <ul class="layer-list">
-    @for (row of group.shown; track row.layer.id) {
-      <li>
-        <button
-          #rowButton
-          type="button"
-          class="layer-row"
-          [attr.data-layer-id]="row.layer.id"
-          [class.hasLabel]="!!row.labelColor"
-          [class.isSelected]="row.layer.id === selectedId()"
-          [style.--layer-label-color]="row.labelColor"
-          (click)="select(row.layer)"
-        >
-          <layer-image
-            class="thumb"
-            [imageId]="row.layer.imageId"
-          ></layer-image>
-          <span class="layer-text">
-            <span class="layer-title">
-              @if (row.layer.id === anchorId()) {
-                <mat-icon class="anchor-ico">star</mat-icon>
-              }
-              {{ row.layer.title }}
-            </span>
-            <span class="layer-meta">
-              {{ row.layer.createdAt | localeDate: 'mediumDate' }}
-              @if (row.label && viewMode() !== 'label') {
-                <layer-label-pill [label]="row.label"></layer-label-pill>
-              }
-            </span>
-          </span>
-        </button>
-      </li>
-    }
-  </ul>
+  <ng-container
+    [ngTemplateOutlet]="nodes"
+    [ngTemplateOutletContext]="{
+      $implicit: group.shown,
+      container: group.container,
+      depth: 0,
+    }"
+  ></ng-container>
   @if (group.hiddenCount) {
     <button
       mat-button
@@ -507,4 +517,134 @@
       {{ T.F.LAYER.SHOW_OLDER | translate: { nr: group.hiddenCount } }}
     </button>
   }
+</ng-template>
+
+<!-- One level of the folder tree (recursive for groups). Drag reorders within
+     this level only: a folder's top level or one group's content. -->
+<ng-template
+  #nodes
+  let-list
+  let-container="container"
+  let-depth="depth"
+>
+  <ul
+    class="layer-list"
+    cdkDropList
+    cdkDropListLockAxis="y"
+    [cdkDropListDisabled]="!isTreeMode()"
+    (cdkDropListDropped)="dropNode(container, $event)"
+  >
+    @for (node of list; track node.key) {
+      <li
+        cdkDrag
+        [cdkDragDisabled]="!isTreeMode()"
+      >
+        @if (node.kind === 'layer') {
+          @let row = node.row;
+          <button
+            #rowButton
+            type="button"
+            class="layer-row"
+            [attr.data-layer-id]="row.layer.id"
+            [class.hasLabel]="!!row.labelColor"
+            [class.isSelected]="row.layer.id === selectedId()"
+            [class.isMultiSelected]="
+              selectedKeys().size > 1 && selectedKeys().has(node.key)
+            "
+            [style.--layer-label-color]="row.labelColor"
+            (click)="onNodeClick(node, list, $event)"
+          >
+            <layer-image
+              class="thumb"
+              [imageId]="row.layer.imageId"
+            ></layer-image>
+            <span class="layer-text">
+              <span class="layer-title">
+                @if (row.layer.id === anchorId()) {
+                  <mat-icon class="anchor-ico">star</mat-icon>
+                }
+                {{ row.layer.title }}
+              </span>
+              <span class="layer-meta">
+                {{ row.layer.createdAt | localeDate: 'mediumDate' }}
+                @if (row.label && viewMode() !== 'label') {
+                  <layer-label-pill [label]="row.label"></layer-label-pill>
+                }
+              </span>
+            </span>
+          </button>
+        } @else {
+          @let isCollapsed = collapsedGroupIds().has(node.group.id);
+          <div
+            class="group-node"
+            [class.isSelected]="selectedKeys().size === 1 && selectedKeys().has(node.key)"
+            [class.isMultiSelected]="
+              selectedKeys().size > 1 && selectedKeys().has(node.key)
+            "
+          >
+            <button
+              mat-icon-button
+              type="button"
+              class="group-chevron"
+              [attr.aria-expanded]="!isCollapsed"
+              [attr.aria-label]="
+                (isCollapsed ? T.F.LAYER.GROUP_EXPAND : T.F.LAYER.GROUP_COLLAPSE)
+                  | translate
+              "
+              (click)="toggleGroupCollapsed(node.group.id)"
+            >
+              <mat-icon>{{ isCollapsed ? 'chevron_right' : 'expand_more' }}</mat-icon>
+            </button>
+            <button
+              type="button"
+              class="group-name"
+              (click)="onNodeClick(node, list, $event)"
+              (dblclick)="renameGroup(node.group)"
+            >
+              <mat-icon class="group-ico">folder_open</mat-icon>
+              <span class="layer-title">{{ node.group.name }}</span>
+            </button>
+            <span class="group-count">{{ node.layerCount || '' }}</span>
+            <button
+              mat-icon-button
+              type="button"
+              class="folder-menu-btn"
+              [matMenuTriggerFor]="groupMenu"
+              [attr.aria-label]="T.F.LAYER.GROUP_OPTIONS | translate"
+            >
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #groupMenu="matMenu">
+              <button
+                mat-menu-item
+                (click)="renameGroup(node.group)"
+              >
+                <mat-icon>edit</mat-icon>
+                {{ T.F.LAYER.RENAME | translate }}
+              </button>
+              <button
+                mat-menu-item
+                (click)="ungroup(node.group)"
+              >
+                <mat-icon>layers_clear</mat-icon>
+                {{ T.F.LAYER.UNGROUP | translate }}
+              </button>
+            </mat-menu>
+          </div>
+          @if (!isCollapsed) {
+            <div class="group-children">
+              <ng-container
+                [ngTemplateOutlet]="nodes"
+                [ngTemplateOutletContext]="{
+                  $implicit: node.children,
+                  container: { sectionId: container.sectionId, groupId: node.group.id },
+                  depth: depth + 1,
+                }"
+              ></ng-container>
+            </div>
+          }
+        }
+      </li>
+    }
+  </ul>
 </ng-template>

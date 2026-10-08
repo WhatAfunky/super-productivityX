@@ -11,6 +11,7 @@ import { sanitizeLayerTitle } from './layer.util';
 import { SnackService } from '../../core/snack/snack.service';
 import { TranslateService } from '@ngx-translate/core';
 import { LayerImageService } from './layer-image.service';
+import { LayerOrganizeService } from './layer-organize.service';
 import { T } from '../../t.const';
 import { SectionService } from '../section/section.service';
 import { LayerLabelService } from './layer-label.service';
@@ -43,6 +44,7 @@ export class LayerService {
   private _layerLabelService = inject(LayerLabelService);
   private _layerImageService = inject(LayerImageService);
   private _translateService = inject(TranslateService);
+  private _layerOrganizeService = inject(LayerOrganizeService);
 
   /**
    * While the Layers view is open it registers its selection here, so Add
@@ -74,6 +76,7 @@ export class LayerService {
     title: string,
     sectionId: string | null,
     labelId: string | null = null,
+    sortKey: string | null = null,
   ): string | null {
     const cleanTitle = sanitizeLayerTitle(title);
     if (!cleanTitle) return null;
@@ -87,6 +90,7 @@ export class LayerService {
           createdAt: Date.now(),
           sectionId,
           labelId,
+          sortKey,
           imageId: null,
         },
       }),
@@ -142,7 +146,18 @@ export class LayerService {
     );
     if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
     if (!result) return null;
-    const id = this.addLayer(projectId, result.title, result.sectionId, result.labelId);
+    // On top of the folder, also when it has a manual order.
+    const sortKey = await this._layerOrganizeService.topKeyFor(projectId, {
+      sectionId: result.sectionId,
+      groupId: null,
+    });
+    const id = this.addLayer(
+      projectId,
+      result.title,
+      result.sectionId,
+      result.labelId,
+      sortKey,
+    );
     if (id && image) {
       await this.setImage({ id, imageId: null }, image);
     }
@@ -159,6 +174,10 @@ export class LayerService {
       ? await this._layerImageService.copy(layer.imageId)
       : null;
     const suffix = this._translateService.instant(T.F.LAYER.COPY_SUFFIX);
+    const sortKey = await this._layerOrganizeService.topKeyFor(layer.projectId, {
+      sectionId: layer.sectionId ?? null,
+      groupId: layer.groupId ?? null,
+    });
     const id = nanoid();
     this._store.dispatch(
       addLayer({
@@ -169,11 +188,26 @@ export class LayerService {
           createdAt: Date.now(),
           sectionId: layer.sectionId ?? null,
           labelId: layer.labelId ?? null,
+          groupId: layer.groupId ?? null,
+          sortKey,
           imageId,
         },
       }),
     );
     return id;
+  }
+
+  /** Moving to another folder leaves any group, and lands on top there. */
+  async moveToFolder(layer: Layer, sectionId: string | null): Promise<void> {
+    const sortKey = await this._layerOrganizeService.topKeyFor(layer.projectId, {
+      sectionId,
+      groupId: null,
+    });
+    this._store.dispatch(
+      updateLayer({
+        layer: { id: layer.id, changes: { sectionId, groupId: null, sortKey } },
+      }),
+    );
   }
 
   updateLayer(id: string, changes: LayerEditableFields): void {

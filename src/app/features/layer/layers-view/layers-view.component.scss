@@ -406,3 +406,78 @@
   flex-wrap: wrap;
   gap: var(--s);
 }
+
+// Multi-selection for grouping: a tint plus the outline, so it never relies on
+// the background alone (see the styling guide on row states).
+.layer-row.isMultiSelected,
+.group-node.isMultiSelected {
+  background: var(--state-hover);
+  outline: 1px solid var(--c-primary);
+}
+
+.group-node.isSelected {
+  outline: 1px solid var(--c-primary);
+}
+
+.group-node {
+  display: flex;
+  align-items: center;
+  gap: var(--s-half);
+  border-radius: var(--radius-sm);
+}
+
+.group-name {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--s-half);
+  min-width: 0;
+  padding: var(--s-half) 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  text-align: start;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+}
+
+.group-ico {
+  flex: none;
+  width: var(--s2);
+  height: var(--s2);
+  font-size: var(--s2);
+  color: var(--text-color-muted);
+}
+
+// Each nesting level indents its content.
+.group-children {
+  padding-inline-start: var(--s3);
+  border-inline-start: 1px solid var(--divider-color);
+  margin-inline-start: var(--s2);
+}
+
+.selection-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s);
+  margin-bottom: var(--s);
+  padding: var(--s-half) var(--s);
+  border-radius: var(--radius-sm);
+  background: var(--state-hover);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.selection-hint {
+  color: var(--text-color-muted);
+  font-size: var(--font-size-sm);
+}

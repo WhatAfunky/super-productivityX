@@ -24,6 +24,7 @@ export interface AppStateSnapshot {
   section: unknown;
   layer?: unknown;
   layerLabel?: unknown;
+  layerGroup?: unknown;
   archiveYoung: ArchiveModel;
   archiveOld: ArchiveModel;
 }

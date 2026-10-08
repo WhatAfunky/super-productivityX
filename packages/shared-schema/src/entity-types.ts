@@ -30,6 +30,7 @@ export const ENTITY_TYPES = [
   'SECTION',
   'LAYER',
   'LAYER_LABEL',
+  'LAYER_GROUP',
   'REMINDER',
   'PLUGIN_USER_DATA',
   'PLUGIN_METADATA',

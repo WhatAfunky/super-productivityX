@@ -19,6 +19,10 @@ export interface Layer {
   sectionId?: string | null;
   /** One label (LayerLabel of the same project). Missing or dangling → none. */
   labelId?: string | null;
+  /** Group inside the folder; missing or dangling → not grouped. */
+  groupId?: string | null;
+  /** Manual order among its siblings (see sort-key.util); missing → by date. */
+  sortKey?: string | null;
   /**
    * Opaque id of a device-local screenshot (ClipboardImageService storage).
    * Never a path or URL, so a synced layer leaks nothing about the machine

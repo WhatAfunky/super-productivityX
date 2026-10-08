@@ -49,6 +49,10 @@ import {
   LAYER_LABEL_FEATURE_NAME,
   layerLabelReducer,
 } from '../features/layer/store/layer-label.reducer';
+import {
+  LAYER_GROUP_FEATURE_NAME,
+  layerGroupReducer,
+} from '../features/layer/store/layer-group.reducer';
 import { LayerUiEffects } from '../features/layer/store/layer-ui.effects';
 import { TAG_FEATURE_NAME, tagReducer } from '../features/tag/store/tag.reducer';
 import { TagEffects } from '../features/tag/store/tag.effects';
@@ -154,6 +158,7 @@ import { ReducerFailureSnackEffects } from './meta/reducer-failure-snack.effects
     StoreModule.forFeature(SECTION_FEATURE_NAME, sectionReducer),
     StoreModule.forFeature(LAYER_FEATURE_NAME, layerReducer),
     StoreModule.forFeature(LAYER_LABEL_FEATURE_NAME, layerLabelReducer),
+    StoreModule.forFeature(LAYER_GROUP_FEATURE_NAME, layerGroupReducer),
     EffectsModule.forFeature([LayerUiEffects]),
 
     StoreModule.forFeature(TAG_FEATURE_NAME, tagReducer),

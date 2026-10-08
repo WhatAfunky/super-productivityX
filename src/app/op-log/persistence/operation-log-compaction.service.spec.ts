@@ -1079,6 +1079,7 @@ describe('OperationLogCompactionService', () => {
         section: 'SECTION',
         layer: 'LAYER',
         layerLabel: 'LAYER_LABEL',
+        layerGroup: 'LAYER_GROUP',
       };
 
       const missingModels: string[] = [];

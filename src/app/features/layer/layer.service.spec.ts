@@ -5,6 +5,7 @@ import { Layer } from './layer.model';
 import { addLayer, deleteLayer, updateLayer } from './store/layer.actions';
 import { SnackService } from '../../core/snack/snack.service';
 import { LayerImageService } from './layer-image.service';
+import { LayerOrganizeService } from './layer-organize.service';
 import { TranslateService } from '@ngx-translate/core';
 import { MatDialog } from '@angular/material/dialog';
 import { of } from 'rxjs';
@@ -48,6 +49,7 @@ describe('LayerService', () => {
         LayerService,
         provideMockStore(),
         { provide: LayerImageService, useValue: images },
+        { provide: LayerOrganizeService, useValue: { topKeyFor: async () => null } },
         { provide: TranslateService, useValue: { instant: () => 'copy' } },
         { provide: SnackService, useValue: snack },
         { provide: MatDialog, useValue: dialog },

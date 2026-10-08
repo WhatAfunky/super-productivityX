@@ -28,6 +28,7 @@ export const extractEntityKeysFromState = (state: AppStateSnapshot): string[] =>
     { key: 'SECTION', state: state.section as EntityState },
     { key: 'LAYER', state: state.layer as EntityState },
     { key: 'LAYER_LABEL', state: state.layerLabel as EntityState },
+    { key: 'LAYER_GROUP', state: state.layerGroup as EntityState },
   ];
 
   for (const { key, state: entityState } of entityStates) {

@@ -11,6 +11,7 @@ import { ProjectState } from '../../features/project/project.model';
 import { SectionState } from '../../features/section/section.model';
 import { LayerState } from '../../features/layer/layer.model';
 import { LayerLabelState } from '../../features/layer/layer-label.model';
+import { LayerGroupState } from '../../features/layer/layer-group.model';
 import { MenuTreeState } from '../../features/menu-tree/store/menu-tree.model';
 import { TaskState } from '../../features/tasks/task.model';
 import { createValidate, IValidation } from 'typia';
@@ -59,6 +60,7 @@ const _validatePluginMetadata = createValidate<PluginMetaDataState>();
 const _validateSection = createValidate<SectionState>();
 const _validateLayer = createValidate<LayerState | undefined>();
 const _validateLayerLabel = createValidate<LayerLabelState | undefined>();
+const _validateLayerGroup = createValidate<LayerGroupState | undefined>();
 
 /**
  * `Task.issueType` and `IssueProvider.issueProviderKey` are validated against the
@@ -202,6 +204,8 @@ export const appDataValidators: {
     _wrapValidate(_validateLayer(d), d, false, 'layer'),
   layerLabel: <R>(d: R | LayerLabelState | undefined) =>
     _wrapValidate(_validateLayerLabel(d), d, false, 'layerLabel'),
+  layerGroup: <R>(d: R | LayerGroupState | undefined) =>
+    _wrapValidate(_validateLayerGroup(d), d, false, 'layerGroup'),
 } as const;
 
 const logValidationFailure = <R>(

@@ -25,6 +25,7 @@ import { ActionType } from '../../core/action-types.enum';
  * - E = Metric
  * - LY = Layer (two chars: L is Planner)
  * - LL = LayerLabel
+ * - LG = LayerGroup
  * - W = WorkContextMeta
  * - U = Plugin
  * - H = Task Shared (multi-entity actions)
@@ -175,6 +176,11 @@ export const ACTION_TYPE_TO_CODE: Record<ActionType, string> = {
   [ActionType.LAYER_LABEL_ADD]: 'LLA',
   [ActionType.LAYER_LABEL_UPDATE]: 'LLU',
   [ActionType.LAYER_LABEL_DELETE]: 'LLD',
+
+  // LayerGroup
+  [ActionType.LAYER_GROUP_ADD]: 'LGA',
+  [ActionType.LAYER_GROUP_UPDATE]: 'LGU',
+  [ActionType.LAYER_GROUP_DELETE]: 'LGD',
 
   // SimpleCounter actions (S)
   [ActionType.COUNTER_ADD]: 'SA',

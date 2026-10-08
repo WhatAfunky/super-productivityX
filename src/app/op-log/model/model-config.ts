@@ -32,6 +32,8 @@ import { initialLayerState } from '../../features/layer/store/layer.reducer';
 import { LayerState } from '../../features/layer/layer.model';
 import { initialLayerLabelState } from '../../features/layer/store/layer-label.reducer';
 import { LayerLabelState } from '../../features/layer/layer-label.model';
+import { initialLayerGroupState } from '../../features/layer/store/layer-group.reducer';
+import { LayerGroupState } from '../../features/layer/layer-group.model';
 import { initialTaskRepeatCfgState } from '../../features/task-repeat-cfg/store/task-repeat-cfg.reducer';
 import {
   ArchiveModel,
@@ -67,6 +69,7 @@ export type AllModelConfig = {
   // and typia must accept it as-is (AGENTS.md rule 11, frozen-state.spec.ts).
   layer: ModelCfg<LayerState | undefined>;
   layerLabel: ModelCfg<LayerLabelState | undefined>;
+  layerGroup: ModelCfg<LayerGroupState | undefined>;
   taskRepeatCfg: ModelCfg<TaskRepeatCfgState>;
   reminders: ModelCfg<Reminder[]>;
   timeTracking: ModelCfg<TimeTrackingState>;
@@ -114,6 +117,10 @@ export const MODEL_CONFIGS: AllModelConfig = {
   },
   layerLabel: {
     defaultData: initialLayerLabelState,
+    isMainFileModel: true,
+  },
+  layerGroup: {
+    defaultData: initialLayerGroupState,
     isMainFileModel: true,
   },
   note: {
