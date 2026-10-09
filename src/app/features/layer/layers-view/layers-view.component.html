@@ -40,6 +40,7 @@
       } @else {
         <p class="empty">{{ T.F.LAYER.VISION_EMPTY | translate }}</p>
       }
+      <!-- ANCHOR (disabled 2026-10-08, kept to restore later)
       <div
         class="anchor-row"
         [matTooltip]="T.F.LAYER.ANCHOR_HINT | translate"
@@ -62,6 +63,7 @@
           <span class="anchor-empty">{{ T.F.LAYER.NO_ANCHOR | translate }}</span>
         }
       </div>
+      -->
     </section>
 
     <section
@@ -342,6 +344,7 @@
         >
           <mat-icon>play_arrow</mat-icon>
         </button>
+        <!-- ANCHOR (disabled 2026-10-08, kept to restore later)
         <button
           mat-icon-button
           type="button"
@@ -360,6 +363,7 @@
         >
           <mat-icon>{{ anchorId() === layer.id ? 'star' : 'star_border' }}</mat-icon>
         </button>
+        -->
         <button
           mat-icon-button
           type="button"
@@ -444,6 +448,7 @@
           [alt]="layer.title"
           [emptyText]="T.F.LAYER.PASTE_HINT | translate"
         ></layer-image>
+        <!-- ANCHOR (disabled 2026-10-08, kept to restore later)
         @if (isComparing() && canCompare()) {
           @let anchor = anchorRow()!;
           <figure class="compare-anchor">
@@ -459,6 +464,7 @@
             </figcaption>
           </figure>
         }
+        -->
       </div>
 
       <div class="preview-actions">
@@ -470,6 +476,7 @@
           <mat-icon>image</mat-icon>
           {{ T.F.LAYER.CHOOSE_IMAGE | translate }}
         </button>
+        <!-- ANCHOR (disabled 2026-10-08, kept to restore later)
         @if (canCompare()) {
           <button
             mat-stroked-button
@@ -481,6 +488,7 @@
             {{ (isComparing() ? T.F.LAYER.COMPARE_OFF : T.F.LAYER.COMPARE) | translate }}
           </button>
         }
+        -->
         @if (layer.imageId) {
           <button
             mat-button
@@ -570,9 +578,11 @@
             ></layer-image>
             <span class="layer-text">
               <span class="layer-title">
+                <!-- ANCHOR (disabled 2026-10-08, kept to restore later)
                 @if (row.layer.id === anchorId()) {
                   <mat-icon class="anchor-ico">star</mat-icon>
                 }
+                -->
                 {{ row.layer.title }}
               </span>
               <span class="layer-meta">

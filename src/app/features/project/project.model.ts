@@ -29,6 +29,8 @@ export interface ProjectBasicCfg {
   layerVision?: string;
   // The anchor layer ("north star"). A pointer, so changing the anchor is one
   // project update; a dangling id (layer deleted) means "no anchor".
+  // The anchor UI is disabled (2026-10-08); the field stays so existing data
+  // keeps validating and the feature can be restored.
   layerAnchorId?: string | null;
   // Opt-in: after a focus session, ask "did something new come to exist?".
   isLayerSessionNudgeEnabled?: boolean;

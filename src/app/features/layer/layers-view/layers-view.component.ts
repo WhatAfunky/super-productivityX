@@ -302,22 +302,24 @@ export class LayersViewComponent {
   );
   readonly selectedLayer = computed(() => this.selectedRow()?.layer ?? null);
 
-  // ── Vision & anchor (the Layers method's north star) ──────────────────────
+  // ── Vision (the Layers method's north star) ──────────────────────
   readonly MAX_VISION_LENGTH = MAX_LAYER_VISION_LENGTH;
   readonly isEditingVision = signal(false);
-  readonly isComparing = signal(false);
+  // ANCHOR (disabled 2026-10-08, kept to restore later)
+  // readonly isComparing = signal(false);
   readonly isExporting = signal(false);
-  /** The anchor's row; null when none is set or it was deleted. */
-  readonly anchorRow = computed(() => {
-    const anchorId = this.project().layerAnchorId;
-    return (anchorId && this._rows().find((r) => r.layer.id === anchorId)) || null;
-  });
-  readonly anchorId = computed(() => this.anchorRow()?.layer.id ?? null);
-  /** Compare is offered when another layer is selected and the anchor has an image. */
-  readonly canCompare = computed(() => {
-    const anchor = this.anchorRow();
-    return !!anchor?.layer.imageId && anchor.layer.id !== this.selectedId();
-  });
+  // ANCHOR (disabled 2026-10-08, kept to restore later)
+  // /** The anchor's row; null when none is set or it was deleted. */
+  // readonly anchorRow = computed(() => {
+  // const anchorId = this.project().layerAnchorId;
+  // return (anchorId && this._rows().find((r) => r.layer.id === anchorId)) || null;
+  // });
+  // readonly anchorId = computed(() => this.anchorRow()?.layer.id ?? null);
+  // /** Compare is offered when another layer is selected and the anchor has an image. */
+  // readonly canCompare = computed(() => {
+  // const anchor = this.anchorRow();
+  // return !!anchor?.layer.imageId && anchor.layer.id !== this.selectedId();
+  // });
 
   constructor() {
     // Per project: restore the remembered grouping, and let Add layer from
@@ -525,18 +527,19 @@ export class LayersViewComponent {
     }
   }
 
-  toggleAnchor(layer: Layer): void {
-    const isAnchor = this.anchorId() === layer.id;
-    this._projectService.update(
-      this.project().id,
-      { layerAnchorId: isAnchor ? null : layer.id },
-      true,
-    );
-  }
+  // ANCHOR (disabled 2026-10-08, kept to restore later)
+  // toggleAnchor(layer: Layer): void {
+  // const isAnchor = this.anchorId() === layer.id;
+  // this._projectService.update(
+  // this.project().id,
+  // { layerAnchorId: isAnchor ? null : layer.id },
+  // true,
+  // );
+  // }
 
-  toggleCompare(): void {
-    this.isComparing.update((v) => !v);
-  }
+  // toggleCompare(): void {
+  // this.isComparing.update((v) => !v);
+  // }
 
   async exportScreenshots(): Promise<void> {
     if (this.isExporting()) return;
