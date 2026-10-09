@@ -33,6 +33,25 @@ export const updateLayer = createAction(
   }),
 );
 
+/**
+ * Moves a layer to another project. Its own action (not `updateLayer`) so
+ * `projectId` stays immutable for ordinary updates. Folder, group, order and
+ * goal link belong to the old project and are cleared; `labelId` is the
+ * target project's label of the same name, or null.
+ */
+export const moveLayerToProject = createAction(
+  '[Layer] Move Layer To Project',
+  (payload: { id: string; projectId: string; labelId: string | null }) => ({
+    ...payload,
+    meta: {
+      isPersistent: true,
+      entityType: 'LAYER',
+      entityId: payload.id,
+      opType: OpType.Update,
+    } satisfies PersistentActionMeta,
+  }),
+);
+
 export const deleteLayer = createAction(
   '[Layer] Delete Layer',
   (payload: { id: string }) => ({

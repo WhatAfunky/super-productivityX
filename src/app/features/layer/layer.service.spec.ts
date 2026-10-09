@@ -2,7 +2,12 @@ import { TestBed } from '@angular/core/testing';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { LayerService } from './layer.service';
 import { Layer } from './layer.model';
-import { addLayer, deleteLayer, updateLayer } from './store/layer.actions';
+import {
+  addLayer,
+  deleteLayer,
+  moveLayerToProject,
+  updateLayer,
+} from './store/layer.actions';
 import { SnackService } from '../../core/snack/snack.service';
 import { LayerImageService } from './layer-image.service';
 import { LayerOrganizeService } from './layer-organize.service';
@@ -23,6 +28,7 @@ describe('LayerService', () => {
   let images: jasmine.SpyObj<LayerImageService>;
   let snack: jasmine.SpyObj<SnackService>;
   let dialog: jasmine.SpyObj<MatDialog>;
+  let addLabel: jasmine.Spy;
 
   const layer = (overrides: Partial<Layer> = {}): Layer => ({
     id: 'l1',
@@ -44,6 +50,7 @@ describe('LayerService', () => {
     images.delete.and.resolveTo();
     snack = jasmine.createSpyObj<SnackService>('SnackService', ['open']);
     dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
+    addLabel = jasmine.createSpy('addLabel').and.returnValue('createdLabel');
     TestBed.configureTestingModule({
       providers: [
         LayerService,
@@ -59,7 +66,10 @@ describe('LayerService', () => {
         },
         {
           provide: LayerLabelService,
-          useValue: { getVisibleLabelsByProjectId$: () => of([{ id: 'code' }]) },
+          useValue: {
+            getVisibleLabelsByProjectId$: () => of([{ id: 'code' }]),
+            addLabel,
+          },
         },
       ],
     });
@@ -265,5 +275,52 @@ describe('LayerService', () => {
     images.deleteOrphans.and.resolveTo(0);
     await service.deleteOrphanedImages();
     expect(images.deleteOrphans).toHaveBeenCalledOnceWith(new Set(['layer-a']));
+  });
+
+  describe('moveToProject', () => {
+    const label = (id: string, extra: Partial<LayerLabel>): LayerLabel => ({
+      id,
+      projectId: 'p1',
+      name: id,
+      color: 'blue',
+      ...extra,
+    });
+
+    it('reuses the target label with the same name (case-insensitive)', async () => {
+      store.overrideSelector(selectLayerLabelEntities, {
+        ui: label('ui', { name: 'UI' }),
+        targetUi: label('targetUi', { projectId: 'p2', name: 'ui' }),
+      });
+      await service.moveToProject(layer({ labelId: 'ui' }), 'p2');
+
+      expect(addLabel).not.toHaveBeenCalled();
+      expect(dispatchSpy).toHaveBeenCalledOnceWith(
+        moveLayerToProject({ id: 'l1', projectId: 'p2', labelId: 'targetUi' }),
+      );
+    });
+
+    it('creates the label in the target when missing, following merges', async () => {
+      store.overrideSelector(selectLayerLabelEntities, {
+        old: label('old', { name: 'SFX old', mergedIntoId: 'sfx' }),
+        sfx: label('sfx', { name: 'SFX', color: 'green' }),
+      });
+      await service.moveToProject(layer({ labelId: 'old' }), 'p2');
+
+      expect(addLabel).toHaveBeenCalledOnceWith('p2', 'SFX', 'green');
+      expect(dispatchSpy).toHaveBeenCalledOnceWith(
+        moveLayerToProject({ id: 'l1', projectId: 'p2', labelId: 'createdLabel' }),
+      );
+    });
+
+    it('moves without a label, and ignores the same project', async () => {
+      store.overrideSelector(selectLayerLabelEntities, {});
+      await service.moveToProject(layer(), 'p1');
+      expect(dispatchSpy).not.toHaveBeenCalled();
+
+      await service.moveToProject(layer({ labelId: 'gone' }), 'p2');
+      expect(dispatchSpy).toHaveBeenCalledOnceWith(
+        moveLayerToProject({ id: 'l1', projectId: 'p2', labelId: null }),
+      );
+    });
   });
 });

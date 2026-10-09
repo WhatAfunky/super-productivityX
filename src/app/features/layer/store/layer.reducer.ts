@@ -35,6 +35,25 @@ export const layerReducer = createReducer(
     return adapter.updateOne({ ...layer, changes }, state);
   }),
 
+  on(LayerActions.moveLayerToProject, (state, { id, projectId, labelId }) =>
+    state.entities[id] && projectId
+      ? adapter.updateOne(
+          {
+            id,
+            changes: {
+              projectId,
+              labelId: labelId ?? null,
+              sectionId: null,
+              groupId: null,
+              sortKey: null,
+              focusTaskId: null,
+            },
+          },
+          state,
+        )
+      : state,
+  ),
+
   on(LayerActions.deleteLayer, (state, { id }) => adapter.removeOne(id, state)),
 
   // A project's layers go with it, in the same op as the project delete.

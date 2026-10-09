@@ -171,6 +171,7 @@ export const ACTION_TYPE_TO_CODE: Record<ActionType, string> = {
   [ActionType.LAYER_ADD]: 'LYA',
   [ActionType.LAYER_UPDATE]: 'LYU',
   [ActionType.LAYER_DELETE]: 'LYD',
+  [ActionType.LAYER_MOVE_TO_PROJECT]: 'LYM',
 
   // LayerLabel
   [ActionType.LAYER_LABEL_ADD]: 'LLA',

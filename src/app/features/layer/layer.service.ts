@@ -5,7 +5,12 @@ import { firstValueFrom, Observable } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
 import { map } from 'rxjs/operators';
 import { Layer } from './layer.model';
-import { addLayer, deleteLayer, updateLayer } from './store/layer.actions';
+import {
+  addLayer,
+  deleteLayer,
+  moveLayerToProject,
+  updateLayer,
+} from './store/layer.actions';
 import { selectAllLayers, selectLayersByProjectIdMap } from './store/layer.selectors';
 import { sanitizeLayerTitle } from './layer.util';
 import { SnackService } from '../../core/snack/snack.service';
@@ -16,7 +21,7 @@ import { T } from '../../t.const';
 import { SectionService } from '../section/section.service';
 import { LayerLabelService } from './layer-label.service';
 import { selectLayerLabelEntities } from './store/layer-label.selectors';
-import { resolveLayerLabel } from './layer-label.util';
+import { resolveLayerLabel, sanitizeLayerLabelColor } from './layer-label.util';
 import {
   DialogAddLayerComponent,
   DialogAddLayerData,
@@ -208,6 +213,37 @@ export class LayerService {
         layer: { id: layer.id, changes: { sectionId, groupId: null, sortKey } },
       }),
     );
+  }
+
+  /**
+   * Moves the layer to another project (it leaves its folder and group there).
+   * Its label carries over by name: the target's label with the same name, or
+   * a new one with the same colour. At most two single-entity ops (add label,
+   * move); either alone is valid state.
+   */
+  async moveToProject(layer: Layer, projectId: string): Promise<void> {
+    if (!projectId || projectId === layer.projectId) return;
+    const labels = await firstValueFrom(this._store.select(selectLayerLabelEntities));
+    const label = resolveLayerLabel(layer.labelId, labels);
+    let labelId: string | null = null;
+    if (label) {
+      const name = label.name.toLocaleLowerCase();
+      const match = Object.values(labels).find(
+        (l) =>
+          !!l &&
+          l.projectId === projectId &&
+          !l.mergedIntoId &&
+          l.name.toLocaleLowerCase() === name,
+      );
+      labelId =
+        match?.id ??
+        this._layerLabelService.addLabel(
+          projectId,
+          label.name,
+          sanitizeLayerLabelColor(label.color),
+        );
+    }
+    this._store.dispatch(moveLayerToProject({ id: layer.id, projectId, labelId }));
   }
 
   updateLayer(id: string, changes: LayerEditableFields): void {

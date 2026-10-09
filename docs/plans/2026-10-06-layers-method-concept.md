@@ -341,3 +341,10 @@ What shipped on `feat/layers-v0`, and where it differs from the plan above:
 ## 18. Anchor disabled (2026-10-08)
 
 After trying it, the user won't use the anchor, so its UI is commented out in `layers-view.component.{html,ts,scss}`. Each disabled block is marked "ANCHOR (disabled 2026-10-08, kept to restore later)". The parts disabled are the anchor row in the Vision card, the ★ toggle in the preview, the ★ on rows, and **Compare with anchor**, which needs an anchor. `Project.layerAnchorId?` stays in the model, so existing data still validates and the feature can come back by uncommenting. Nothing reads it now. Vision, export and the session nudge are unchanged.
+
+## 19. v3: move a layer to another project, as built (2026-10-08)
+
+- **UI:** a "Move to project" button in the preview header opens a menu of the other unarchived, visible projects that have Layers on. If there are none, it says so. After a move the selection clears and a snack says "Moved to <project>".
+- **Op:** a dedicated `moveLayerToProject` action (`[Layer] Move Layer To Project`, code `LYM`, one LAYER update op). `updateLayer` still can't change `projectId`, so ordinary edits keep that invariant. The reducer sets `projectId` and `labelId`, and clears `sectionId`, `groupId`, `sortKey` and `focusTaskId`, since folder, group, order and goal all belong to the old project. The layer lands unfiled, in date order. `createdAt`, title and screenshot are kept, and the image id is device-wide, so the file needs no copy.
+- **Label:** the layer's effective label (merges followed) carries over by name, case-insensitively. It uses the target's label with that name, or creates one with the same colour. That makes at most two single-entity ops (add label, move), and either one alone is valid state.
+- **Verified:** reducer, service and op-log specs (5,128 in `layer` + `op-log`); in the browser, a layer labelled "UI" moved to another project, which got its own "UI" label.

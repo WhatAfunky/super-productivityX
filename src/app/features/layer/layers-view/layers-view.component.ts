@@ -43,6 +43,8 @@ import {
   TreeNode,
 } from '../layer-group.util';
 import { ProjectService } from '../../project/project.service';
+import { selectUnarchivedVisibleProjects } from '../../project/store/project.selectors';
+import { SnackService } from '../../../core/snack/snack.service';
 import { LayerLabelService } from '../layer-label.service';
 import { selectLayerLabelEntities } from '../store/layer-label.selectors';
 import { getLayerLabelColor, resolveLayerLabel } from '../layer-label.util';
@@ -204,6 +206,7 @@ export class LayersViewComponent {
   private _store = inject(Store);
   private _layerService = inject(LayerService);
   private _layerFocusService = inject(LayerFocusService);
+  private _snackService = inject(SnackService);
   private _layerLabelService = inject(LayerLabelService);
   private _sectionService = inject(SectionService);
   private _matDialog = inject(MatDialog);
@@ -754,6 +757,26 @@ export class LayersViewComponent {
     if (id) {
       this.selectedId.set(id);
     }
+  }
+
+  private readonly _visibleProjects = this._store.selectSignal(
+    selectUnarchivedVisibleProjects,
+  );
+  /** Other projects with Layers on: where "Move to project" can send a layer. */
+  readonly moveTargets = computed(() =>
+    this._visibleProjects().filter(
+      (p) => p.isLayersEnabled && p.id !== this.project().id,
+    ),
+  );
+
+  async moveToProject(layer: Layer, target: Project): Promise<void> {
+    await this._layerService.moveToProject(layer, target.id);
+    this.selectedId.set(null);
+    this._snackService.open({
+      msg: T.F.LAYER.MOVED_TO_PROJECT,
+      translateParams: { title: target.title },
+      ico: 'drive_file_move',
+    });
   }
 
   /** ▶: focus on the layer's goal (created on first use). */

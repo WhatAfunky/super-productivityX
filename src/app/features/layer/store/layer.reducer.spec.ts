@@ -1,5 +1,5 @@
 import { initialLayerState, layerReducer } from './layer.reducer';
-import { addLayer, deleteLayer, updateLayer } from './layer.actions';
+import { addLayer, deleteLayer, moveLayerToProject, updateLayer } from './layer.actions';
 import { Layer, LayerState } from '../layer.model';
 import { MAX_LAYER_TITLE_LENGTH } from '../layer.util';
 import { TaskSharedActions } from '../../../root-store/meta/task-shared.actions';
@@ -80,6 +80,48 @@ describe('layerReducer', () => {
         updateLayer({ layer: { id: 'missing', changes: { title: 'x' } } }),
       );
       expect(state).toEqual(before);
+    });
+  });
+
+  describe('moveLayerToProject', () => {
+    it('re-homes the layer and clears what belonged to the old project', () => {
+      const layer = makeLayer({
+        sectionId: 's1',
+        labelId: 'oldLabel',
+        groupId: 'g1',
+        sortKey: 'm',
+        focusTaskId: 't1',
+        imageId: 'img',
+      });
+      const state = layerReducer(
+        stateWith([layer]),
+        moveLayerToProject({ id: 'l1', projectId: 'p2', labelId: 'newLabel' }),
+      );
+      expect(state.entities['l1']).toEqual({
+        ...layer,
+        projectId: 'p2',
+        labelId: 'newLabel',
+        sectionId: null,
+        groupId: null,
+        sortKey: null,
+        focusTaskId: null,
+      });
+    });
+
+    it('is a no-op for an unknown id or an empty project id', () => {
+      const state = stateWith([makeLayer()]);
+      expect(
+        layerReducer(
+          state,
+          moveLayerToProject({ id: 'nope', projectId: 'p2', labelId: null }),
+        ),
+      ).toBe(state);
+      expect(
+        layerReducer(
+          state,
+          moveLayerToProject({ id: 'l1', projectId: '', labelId: null }),
+        ),
+      ).toBe(state);
     });
   });
 

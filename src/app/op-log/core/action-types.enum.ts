@@ -151,6 +151,7 @@ export enum ActionType {
   LAYER_ADD = '[Layer] Add Layer',
   LAYER_UPDATE = '[Layer] Update Layer',
   LAYER_DELETE = '[Layer] Delete Layer',
+  LAYER_MOVE_TO_PROJECT = '[Layer] Move Layer To Project',
 
   // LayerLabel actions (LL)
   LAYER_LABEL_ADD = '[LayerLabel] Add LayerLabel',

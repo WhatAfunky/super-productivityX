@@ -376,6 +376,32 @@
         <button
           mat-icon-button
           type="button"
+          [matTooltip]="T.F.LAYER.MOVE_TO_PROJECT | translate"
+          [attr.aria-label]="T.F.LAYER.MOVE_TO_PROJECT | translate"
+          [matMenuTriggerFor]="moveToProjectMenu"
+        >
+          <mat-icon>drive_file_move</mat-icon>
+        </button>
+        <mat-menu #moveToProjectMenu="matMenu">
+          @for (target of moveTargets(); track target.id) {
+            <button
+              mat-menu-item
+              (click)="moveToProject(layer, target)"
+            >
+              {{ target.title }}
+            </button>
+          } @empty {
+            <button
+              mat-menu-item
+              disabled
+            >
+              {{ T.F.LAYER.NO_OTHER_LAYERS_PROJECT | translate }}
+            </button>
+          }
+        </mat-menu>
+        <button
+          mat-icon-button
+          type="button"
           [matTooltip]="T.F.LAYER.DELETE | translate"
           [attr.aria-label]="T.F.LAYER.DELETE | translate"
           (click)="deleteLayer(layer)"
