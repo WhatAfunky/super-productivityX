@@ -44,6 +44,8 @@ import {
 } from '../layer-group.util';
 import { ProjectService } from '../../project/project.service';
 import { selectUnarchivedVisibleProjects } from '../../project/store/project.selectors';
+import { selectCurrentTaskId } from '../../tasks/store/task.selectors';
+import { selectPausedTaskId } from '../../focus-mode/store/focus-mode.selectors';
 import { SnackService } from '../../../core/snack/snack.service';
 import { LayerLabelService } from '../layer-label.service';
 import { selectLayerLabelEntities } from '../store/layer-label.selectors';
@@ -270,6 +272,31 @@ export class LayersViewComponent {
   private readonly _groupIndex = computed(() => buildGroupIndex(this.layerGroups()));
   /** Collapsed groups (a view state for this session, not saved). */
   readonly collapsedGroupIds = signal<ReadonlySet<string>>(new Set());
+
+  private readonly _currentTaskId = this._store.selectSignal(selectCurrentTaskId);
+  private readonly _pausedTaskId = this._store.selectSignal(selectPausedTaskId);
+  /**
+   * The layer being worked on: its ▶ goal is tracked now, or paused by focus
+   * mode (pause, break). Derived only; nothing is stored.
+   */
+  readonly focusedLayerId = computed(() => {
+    const taskId = this._currentTaskId() ?? this._pausedTaskId();
+    if (!taskId) return null;
+    return this.layers().find((l) => l.focusTaskId === taskId)?.id ?? null;
+  });
+  /** The groups around the focused layer, so a collapsed group still shows it. */
+  readonly focusedGroupIds = computed<ReadonlySet<string>>(() => {
+    const id = this.focusedLayerId();
+    const layer = id ? this.layers().find((l) => l.id === id) : null;
+    const index = this._groupIndex();
+    const ids = new Set<string>();
+    let groupId = layer?.groupId && index.byId.has(layer.groupId) ? layer.groupId : null;
+    while (groupId && !ids.has(groupId)) {
+      ids.add(groupId);
+      groupId = index.parentOf.get(groupId) ?? null;
+    }
+    return ids;
+  });
   /** Multi-selection for grouping: node keys `l:<layerId>` / `g:<groupId>`. */
   readonly selectedKeys = signal<ReadonlySet<string>>(new Set());
   private _lastClickedKey: string | null = null;

@@ -5,7 +5,8 @@ import { TranslateService } from '@ngx-translate/core';
 import { LayerFocusService } from './layer-focus.service';
 import { Layer } from './layer.model';
 import { TaskService } from '../tasks/task.service';
-import { selectTaskEntities } from '../tasks/store/task.selectors';
+import { selectCurrentTaskId, selectTaskEntities } from '../tasks/store/task.selectors';
+import { selectPausedTaskId } from '../focus-mode/store/focus-mode.selectors';
 import { Task } from '../tasks/task.model';
 import { TaskSharedActions } from '../../root-store/meta/task-shared.actions';
 import { updateLayer } from './store/layer.actions';
@@ -65,6 +66,8 @@ describe('LayerFocusService', () => {
     });
     service = TestBed.inject(LayerFocusService);
     store = TestBed.inject(MockStore);
+    store.overrideSelector(selectCurrentTaskId, null);
+    store.overrideSelector(selectPausedTaskId, null);
     dispatched = [];
     spyOn(store, 'dispatch').and.callFake(((a: Action) => {
       dispatched.push(a);
@@ -112,5 +115,15 @@ describe('LayerFocusService', () => {
 
     expect(taskService.setCurrentId).toHaveBeenCalledWith('g1');
     expect(dispatched.length).toBe(0);
+  });
+
+  it('only reopens focus mode when this layer is already being worked on', async () => {
+    setTasks([{ id: 'g1', isDone: false }]);
+    store.overrideSelector(selectPausedTaskId, 'g1');
+    store.refreshState();
+    await service.workOn(layer({ focusTaskId: 'g1' }));
+
+    expect(taskService.setCurrentId).not.toHaveBeenCalled();
+    expect(dispatched.map((a) => a.type)).toEqual([showFocusOverlay.type]);
   });
 });

@@ -26,6 +26,8 @@ import {
   completeTask,
   endFlowtimeSession,
   focusModeLoaded,
+  hideFocusOverlay,
+  logFlowtimeBreak,
   pauseFocusSession,
   resetCycles,
   selectFocusTask,
@@ -88,6 +90,10 @@ import { selectLayerFeatureState } from '../../layer/store/layer.selectors';
 import { Layer } from '../../layer/layer.model';
 import { LayerImageComponent } from '../../layer/layer-image/layer-image.component';
 import { selectProjectFeatureState } from '../../project/store/project.selectors';
+import { DialogConfirmComponent } from '../../../ui/dialog-confirm/dialog-confirm.component';
+import { DialogPromptComponent } from '../../../ui/dialog-prompt/dialog-prompt.component';
+import { msToString } from '../../../ui/duration/ms-to-string.pipe';
+import { FocusSessionTimeService } from '../focus-session-time.service';
 
 @Component({
   selector: 'focus-mode-main',
@@ -258,6 +264,9 @@ export class FocusModeMainComponent {
   );
   isShowSimpleCounters = computed(() => this._isInProgress());
   isShowCompleteSessionButton = computed(() => this._isInProgress());
+  isFlowtimeInProgress = computed(
+    () => this._isInProgress() && this.mode() === FocusModeMode.Flowtime,
+  );
   // cycle 1 is the reset target, so resetting there would be a silent no-op (#9893)
   isResetCyclesDisabled = computed(() => this.focusModeService.currentCycle() <= 1);
   isShowBottomControls = computed(() => this._isInProgress());
@@ -647,9 +656,58 @@ export class FocusModeMainComponent {
   }
 
   exitToPlanning(): void {
-    // Cancelling the session clears tracking and hides the overlay, returning
-    // the user to wherever they were before focus mode (no forced navigation).
-    this._store.dispatch(cancelFocusSession());
+    // Leaving never ends the session: tracking keeps running and the header
+    // focus button brings the overlay back. Ending is explicit (complete /
+    // cancel session).
+    this._store.dispatch(hideFocusOverlay());
+  }
+
+  private readonly _focusSessionTime = inject(FocusSessionTimeService);
+
+  /** Ends the session and takes the time it tracked back off the goal. */
+  cancelSession(): void {
+    const taskId = this.displayedTask()?.id ?? null;
+    const title = this.displayedTask()?.title ?? '';
+    const elapsed = this.focusModeService.timeElapsed();
+    this._matDialog
+      .open(DialogConfirmComponent, {
+        data: {
+          okTxt: T.F.FOCUS_MODE.D_CANCEL_SESSION_OK,
+          message: T.F.FOCUS_MODE.D_CANCEL_SESSION_MSG,
+          translateParams: { time: msToString(elapsed, true), title },
+        },
+      })
+      .afterClosed()
+      .subscribe(async (isConfirm) => {
+        if (!isConfirm) return;
+        // Stop first: tracking stops and flushes its pending time, so the
+        // discard below covers everything this session tracked.
+        this._store.dispatch(cancelFocusSession());
+        await this._focusSessionTime.discard(taskId, elapsed);
+      });
+  }
+
+  /** Flowtime: subtract a break the user forgot to pause for. */
+  logBreak(): void {
+    const taskId = this.displayedTask()?.id ?? null;
+    this._matDialog
+      .open(DialogPromptComponent, {
+        data: {
+          message: T.F.FOCUS_MODE.D_LOG_BREAK_MSG,
+          placeholder: T.F.FOCUS_MODE.D_LOG_BREAK_MINUTES,
+          type: 'number',
+          saveTxt: T.F.FOCUS_MODE.D_LOG_BREAK_OK,
+        },
+      })
+      .afterClosed()
+      .subscribe(async (value: string | undefined) => {
+        const minutes = Number(value);
+        if (!value || !(minutes > 0)) return;
+        // Capped at the session's elapsed time, like the clock itself.
+        const amountMs = Math.min(minutes * 60000, this.focusModeService.timeElapsed());
+        this._store.dispatch(logFlowtimeBreak({ amountMs }));
+        await this._focusSessionTime.discard(taskId, amountMs);
+      });
   }
 
   selectMode(mode: FocusModeMode | string | number): void {

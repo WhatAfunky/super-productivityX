@@ -606,6 +606,67 @@ describe('FocusModeReducer', () => {
     });
   });
 
+  describe('logFlowtimeBreak', () => {
+    beforeEach(() =>
+      jasmine
+        .clock()
+        .install()
+        .mockDate(new Date(2026, 9, 10, 12)),
+    );
+    afterEach(() => jasmine.clock().uninstall());
+    const MIN_40 = 40 * 60000;
+    const MIN_25 = 25 * 60000;
+
+    const flowtime = (
+      timer: Partial<typeof initialState.timer>,
+    ): typeof initialState => ({
+      ...initialState,
+      mode: FocusModeMode.Flowtime,
+      timer: {
+        isRunning: true,
+        startedAt: Date.now() - MIN_40,
+        elapsed: MIN_40,
+        duration: 0,
+        purpose: 'work',
+        ...timer,
+      },
+    });
+
+    it('takes the break off a running session and keeps it running', () => {
+      const result = focusModeReducer(
+        flowtime({}),
+        a.logFlowtimeBreak({ amountMs: 15 * 60000 }),
+      );
+      expect(result.timer.elapsed).toBe(MIN_25);
+      expect(result.timer.startedAt).toBe(Date.now() - MIN_25);
+      expect(result.timer.isRunning).toBe(true);
+    });
+
+    it('caps at the elapsed time, and works on a paused session', () => {
+      const result = focusModeReducer(
+        flowtime({ isRunning: false, startedAt: null, elapsed: 10 * 60000 }),
+        a.logFlowtimeBreak({ amountMs: 60 * 60000 }),
+      );
+      expect(result.timer.elapsed).toBe(0);
+      expect(result.timer.startedAt).toBeNull();
+    });
+
+    it('ignores other modes, breaks and non-positive amounts', () => {
+      const countdown = { ...flowtime({}), mode: FocusModeMode.Countdown };
+      expect(focusModeReducer(countdown, a.logFlowtimeBreak({ amountMs: 60000 }))).toBe(
+        countdown,
+      );
+      const onBreak = flowtime({ purpose: 'break' });
+      expect(focusModeReducer(onBreak, a.logFlowtimeBreak({ amountMs: 60000 }))).toBe(
+        onBreak,
+      );
+      const running = flowtime({});
+      expect(focusModeReducer(running, a.logFlowtimeBreak({ amountMs: 0 }))).toBe(
+        running,
+      );
+    });
+  });
+
   describe('adjustRemainingTime', () => {
     const baseTimer = {
       isRunning: true,

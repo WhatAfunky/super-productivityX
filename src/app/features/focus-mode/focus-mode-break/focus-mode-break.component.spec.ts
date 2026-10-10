@@ -8,7 +8,7 @@ import {
   completeTask,
   pauseFocusSession,
   unPauseFocusSession,
-  cancelFocusSession,
+  hideFocusOverlay,
 } from '../store/focus-mode.actions';
 import { TaskSharedActions } from '../../../root-store/meta/task-shared.actions';
 import {
@@ -156,10 +156,10 @@ describe('FocusModeBreakComponent', () => {
   });
 
   describe('exitToPlanning', () => {
-    it('should dispatch cancelFocusSession (unified back-to-planning flow)', () => {
+    it('hides the overlay and keeps the break running', () => {
       component.exitToPlanning();
 
-      expect(mockStore.dispatch).toHaveBeenCalledWith(cancelFocusSession());
+      expect(mockStore.dispatch).toHaveBeenCalledWith(hideFocusOverlay());
     });
   });
 

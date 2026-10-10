@@ -81,6 +81,16 @@ export const adjustRemainingTime = createAction(
   props<{ amountMs: number }>(),
 );
 
+/**
+ * Flowtime: takes a break the user forgot to pause for off the running work
+ * session (capped at its elapsed time). The tracked time on the task is
+ * removed separately, by FocusSessionTimeService.
+ */
+export const logFlowtimeBreak = createAction(
+  '[FocusMode] Log Flowtime Break',
+  props<{ amountMs: number }>(),
+);
+
 export const setOvertimeEnabled = createAction(
   '[FocusMode] Set Overtime Enabled',
   props<{ enabled: boolean }>(),

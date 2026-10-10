@@ -335,11 +335,18 @@
           (change)="rename(layer, $event)"
           (keydown.enter)="$any($event.target).blur()"
         />
+        @let isFocusedLayer = layer.id === focusedLayerId();
         <button
           mat-icon-button
           type="button"
-          [matTooltip]="T.F.LAYER.WORK_ON | translate"
-          [attr.aria-label]="T.F.LAYER.WORK_ON | translate"
+          class="work-on-btn"
+          [class.isActive]="isFocusedLayer"
+          [matTooltip]="
+            (isFocusedLayer ? T.F.LAYER.BACK_TO_FOCUS : T.F.LAYER.WORK_ON) | translate
+          "
+          [attr.aria-label]="
+            (isFocusedLayer ? T.F.LAYER.BACK_TO_FOCUS : T.F.LAYER.WORK_ON) | translate
+          "
           (click)="workOn(layer)"
         >
           <mat-icon>play_arrow</mat-icon>
@@ -592,6 +599,7 @@
             [attr.data-layer-id]="row.layer.id"
             [class.hasLabel]="!!row.labelColor"
             [class.isSelected]="row.layer.id === selectedId()"
+            [class.isFocused]="row.layer.id === focusedLayerId()"
             [class.isMultiSelected]="
               selectedKeys().size > 1 && selectedKeys().has(node.key)
             "
@@ -609,6 +617,13 @@
                   <mat-icon class="anchor-ico">star</mat-icon>
                 }
                 -->
+                @if (row.layer.id === focusedLayerId()) {
+                  <mat-icon
+                    class="focus-ico"
+                    [matTooltip]="T.F.LAYER.FOCUSED_NOW | translate"
+                    >timer</mat-icon
+                  >
+                }
                 {{ row.layer.title }}
               </span>
               <span class="layer-meta">
@@ -623,6 +638,7 @@
             mat-icon-button
             type="button"
             class="row-play"
+            [class.isActive]="row.layer.id === focusedLayerId()"
             [matTooltip]="T.F.LAYER.WORK_ON | translate"
             [attr.aria-label]="T.F.LAYER.WORK_ON | translate"
             (click)="workOn(row.layer)"
@@ -659,6 +675,13 @@
             >
               <mat-icon class="group-ico">folder_open</mat-icon>
               <span class="layer-title">{{ node.group.name }}</span>
+              @if (isCollapsed && focusedGroupIds().has(node.group.id)) {
+                <mat-icon
+                  class="focus-ico"
+                  [matTooltip]="T.F.LAYER.FOCUSED_NOW | translate"
+                  >timer</mat-icon
+                >
+              }
             </button>
             <span class="group-count">{{ node.layerCount || '' }}</span>
             <button

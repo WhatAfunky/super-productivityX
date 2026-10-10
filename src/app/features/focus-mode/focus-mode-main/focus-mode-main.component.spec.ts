@@ -16,6 +16,12 @@ import { FocusMainUIState, FocusModeMode } from '../focus-mode.model';
 import { TaskCopy } from '../../tasks/task.model';
 import { SimpleCounter } from '../../simple-counter/simple-counter.model';
 import * as actions from '../store/focus-mode.actions';
+import {
+  cancelFocusSession,
+  hideFocusOverlay,
+  logFlowtimeBreak,
+} from '../store/focus-mode.actions';
+import { FocusSessionTimeService } from '../focus-session-time.service';
 import { TaskSharedActions } from '../../../root-store/meta/task-shared.actions';
 import { EffectsModule } from '@ngrx/effects';
 import { Component, EventEmitter, Output, signal, WritableSignal } from '@angular/core';
@@ -729,6 +735,67 @@ describe('FocusModeMainComponent', () => {
       expect(mockStore.dispatch).not.toHaveBeenCalled();
     });
   });
+
+  describe('cancel session and log a break', () => {
+    let discard: jasmine.Spy;
+    const answer = (value: unknown): void => {
+      mockMatDialog.open.and.returnValue({
+        afterClosed: () => of(value),
+      } as MatDialogRef<unknown>);
+    };
+
+    beforeEach(() => {
+      discard = spyOn(TestBed.inject(FocusSessionTimeService), 'discard').and.resolveTo(
+        0,
+      );
+    });
+
+    it('back arrow only hides the overlay, the session keeps running', () => {
+      component.exitToPlanning();
+      expect(mockStore.dispatch).toHaveBeenCalledOnceWith(hideFocusOverlay());
+    });
+
+    it('cancel: after confirming, ends the session and discards its time', async () => {
+      answer(true);
+      component.cancelSession();
+      await fixture.whenStable();
+
+      expect(mockStore.dispatch).toHaveBeenCalledOnceWith(cancelFocusSession());
+      expect(discard).toHaveBeenCalledOnceWith(mockTask.id, 60000);
+    });
+
+    it('cancel: does nothing when not confirmed', async () => {
+      answer(false);
+      component.cancelSession();
+      await fixture.whenStable();
+
+      expect(mockStore.dispatch).not.toHaveBeenCalled();
+      expect(discard).not.toHaveBeenCalled();
+    });
+
+    it('log a break: subtracts the minutes, capped at the elapsed time', async () => {
+      answer('15');
+      component.logBreak();
+      await fixture.whenStable();
+
+      // 15 min asked, but the session has only run 1 min (60000 ms).
+      expect(mockStore.dispatch).toHaveBeenCalledOnceWith(
+        logFlowtimeBreak({ amountMs: 60000 }),
+      );
+      expect(discard).toHaveBeenCalledOnceWith(mockTask.id, 60000);
+    });
+
+    it('log a break: ignores an empty or non-positive answer', async () => {
+      answer('0');
+      component.logBreak();
+      answer(undefined);
+      component.logBreak();
+      await fixture.whenStable();
+
+      expect(mockStore.dispatch).not.toHaveBeenCalled();
+      expect(discard).not.toHaveBeenCalled();
+    });
+  });
 });
 
 /**
@@ -929,8 +996,9 @@ describe('FocusModeMainComponent - notes panel (issue #5752)', () => {
       controls.querySelectorAll(':scope > button, :scope > a'),
     ) as HTMLElement[];
 
-    expect(buttons.length).toBe(6);
+    expect(buttons.length).toBe(7);
     expect(controls.querySelector('.secondary-actions-menu-btn')).toBeNull();
+    expect(controls.querySelector('.cancel-session-btn')).not.toBeNull();
     expect(controls.querySelector('.reset-cycles-btn')).not.toBeNull();
     expect(controls.querySelector('.open-issue-btn')).not.toBeNull();
     expect(controls.querySelector('.show-notes-btn')).not.toBeNull();

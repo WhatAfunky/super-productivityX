@@ -306,8 +306,28 @@
 }
 
 .node:hover > .row-play,
-.row-play:focus-visible {
+.row-play:focus-visible,
+.row-play.isActive {
   opacity: 1;
+}
+
+// The layer whose goal is being worked on (tracked, or paused in focus mode).
+.row-play.isActive,
+.work-on-btn.isActive,
+.focus-ico {
+  color: var(--c-primary);
+}
+
+.focus-ico {
+  flex: none;
+  width: var(--s2);
+  height: var(--s2);
+  font-size: var(--s2);
+  vertical-align: text-bottom;
+}
+
+.layer-row.isFocused {
+  background: var(--state-hover);
 }
 
 .layer-row {

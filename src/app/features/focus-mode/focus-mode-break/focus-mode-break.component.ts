@@ -14,7 +14,7 @@ import { FocusModeMode, getBreakCycle } from '../focus-mode.model';
 import { MsToMinuteClockStringPipe } from '../../../ui/duration/ms-to-minute-clock-string.pipe';
 import { Store } from '@ngrx/store';
 import {
-  cancelFocusSession,
+  hideFocusOverlay,
   completeBreak,
   completeTask,
   pauseFocusSession,
@@ -128,10 +128,9 @@ export class FocusModeBreakComponent {
   }
 
   exitToPlanning(): void {
-    // Cancelling the session clears tracking and hides the overlay (via the
-    // cancelFocusSession$ effect), returning the user to wherever they were
-    // before focus mode — no forced navigation.
-    this._store.dispatch(cancelFocusSession());
+    // Leaving keeps the break (and any tracking) running; the header focus
+    // button brings the overlay back.
+    this._store.dispatch(hideFocusOverlay());
   }
 
   // --- Shared task-row controls (only reachable when tracking continues through

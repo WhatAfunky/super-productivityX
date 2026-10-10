@@ -5,7 +5,8 @@ import { firstValueFrom } from 'rxjs';
 import { Layer } from './layer.model';
 import { updateLayer } from './store/layer.actions';
 import { TaskService } from '../tasks/task.service';
-import { selectTaskEntities } from '../tasks/store/task.selectors';
+import { selectCurrentTaskId, selectTaskEntities } from '../tasks/store/task.selectors';
+import { selectPausedTaskId } from '../focus-mode/store/focus-mode.selectors';
 import { TaskSharedActions } from '../../root-store/meta/task-shared.actions';
 import { WorkContextType } from '../work-context/work-context.model';
 import { showFocusOverlay } from '../focus-mode/store/focus-mode.actions';
@@ -27,7 +28,15 @@ export class LayerFocusService {
 
   async workOn(layer: Layer): Promise<void> {
     const taskId = (await this._openGoalId(layer)) ?? (await this._createGoal(layer));
-    this._taskService.setCurrentId(taskId);
+    // Already this layer's session (tracking, or paused by focus mode): only
+    // bring focus mode back. Setting it current again would resume a pause.
+    const [currentId, pausedId] = await Promise.all([
+      firstValueFrom(this._store.select(selectCurrentTaskId)),
+      firstValueFrom(this._store.select(selectPausedTaskId)),
+    ]);
+    if (taskId !== currentId && taskId !== pausedId) {
+      this._taskService.setCurrentId(taskId);
+    }
     // With focus mode switched off in app features, ▶ just starts tracking.
     if (this._globalConfigService.appFeatures().isFocusModeEnabled) {
       this._store.dispatch(showFocusOverlay());

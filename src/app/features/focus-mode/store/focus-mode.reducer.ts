@@ -319,6 +319,32 @@ export const focusModeReducer = createReducer(
   })),
 
   // Adjust remaining time by modifying goal duration (work sessions only)
+  on(a.logFlowtimeBreak, (state, { amountMs }) => {
+    if (
+      state.mode !== FocusModeMode.Flowtime ||
+      state.timer.purpose !== 'work' ||
+      !(amountMs > 0)
+    ) {
+      return state;
+    }
+    const timer = updateTimer(state.timer);
+    const cut = Math.min(amountMs, timer.elapsed);
+    if (cut <= 0) return state;
+    return {
+      ...state,
+      timer: {
+        ...timer,
+        elapsed: timer.elapsed - cut,
+        // While running, elapsed is derived from startedAt; move it with the cut.
+        // A paused timer recomputes startedAt from elapsed when resumed.
+        startedAt:
+          timer.isRunning && timer.startedAt !== null
+            ? timer.startedAt + cut
+            : timer.startedAt,
+      },
+    };
+  }),
+
   on(a.adjustRemainingTime, (state, { amountMs }) => {
     if (state.timer.purpose !== 'work') {
       return state;
