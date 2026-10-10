@@ -390,19 +390,15 @@
           </button>
         }
 
-        @if (displayed) {
+        @if (displayed?.projectId) {
           <button
             mat-icon-button
-            class="ico-btn show-additional-info-btn show-notes-btn"
-            [matTooltip]="T.F.FOCUS_MODE.SHOW_HIDE_NOTES_AND_ATTACHMENTS | translate"
-            [attr.aria-label]="T.F.FOCUS_MODE.SHOW_HIDE_NOTES_AND_ATTACHMENTS | translate"
-            (click)="isFocusNotes.set(!isFocusNotes())"
+            class="add-project-task-btn"
+            [matTooltip]="T.F.FOCUS_MODE.ADD_PROJECT_TASK | translate"
+            [attr.aria-label]="T.F.FOCUS_MODE.ADD_PROJECT_TASK | translate"
+            (click)="addProjectTask()"
           >
-            @if (!isFocusNotes()) {
-              <mat-icon>chat</mat-icon>
-            } @else {
-              <mat-icon>expand_more</mat-icon>
-            }
+            <mat-icon>add_task</mat-icon>
           </button>
         }
       }
@@ -455,17 +451,13 @@
       </button>
     }
 
-    @if (displayed) {
+    @if (displayed?.projectId) {
       <button
         mat-menu-item
-        (click)="isFocusNotes.set(!isFocusNotes())"
+        (click)="addProjectTask()"
       >
-        @if (!isFocusNotes()) {
-          <mat-icon>chat</mat-icon>
-        } @else {
-          <mat-icon>expand_more</mat-icon>
-        }
-        <span>{{ T.F.FOCUS_MODE.SHOW_HIDE_NOTES_AND_ATTACHMENTS | translate }}</span>
+        <mat-icon>add_task</mat-icon>
+        <span>{{ T.F.FOCUS_MODE.ADD_PROJECT_TASK | translate }}</span>
       </button>
     }
   </ng-template>
@@ -481,7 +473,9 @@
   ></focus-mode-task-selector>
 }
 
-<!-- Notes and Attachments (In Progress only) -->
+<!-- Notes and Attachments (In Progress only). Its toggles (icon + small-screen
+     menu entry) were removed in this fork (v3.1, 2026-10-10), so the panel is
+     not reachable; kept unchanged to stay close to upstream. -->
 @if (isShowBottomControls() && displayed && isFocusNotes()) {
   <div
     class="notes-backdrop"

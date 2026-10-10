@@ -22,6 +22,8 @@ import {
   logFlowtimeBreak,
 } from '../store/focus-mode.actions';
 import { FocusSessionTimeService } from '../focus-session-time.service';
+import { SnackService } from '../../../core/snack/snack.service';
+import { WorkContextType } from '../../work-context/work-context.model';
 import { TaskSharedActions } from '../../../root-store/meta/task-shared.actions';
 import { EffectsModule } from '@ngrx/effects';
 import { Component, EventEmitter, Output, signal, WritableSignal } from '@angular/core';
@@ -785,6 +787,33 @@ describe('FocusModeMainComponent', () => {
       expect(discard).toHaveBeenCalledOnceWith(mockTask.id, 60000);
     });
 
+    it("add a task: adds it to the focused goal's project, keeps the focus", async () => {
+      const createSpy = jasmine
+        .createSpy('createNewTaskWithDefaults')
+        .and.callFake(
+          ({ title }: { title: string }) => ({ id: 'new', title }) as TaskCopy,
+        );
+      Object.assign(mockTaskService, { createNewTaskWithDefaults: createSpy });
+      const snack = spyOn(TestBed.inject(SnackService), 'open');
+      answer('  Fix the walk cycle  ');
+      component.addProjectTask();
+      await fixture.whenStable();
+
+      expect(createSpy).toHaveBeenCalledOnceWith({
+        title: 'Fix the walk cycle',
+        workContextType: WorkContextType.PROJECT,
+        workContextId: 'project-1',
+      });
+      const added = (mockStore.dispatch as jasmine.Spy).calls.mostRecent()
+        .args[0] as ReturnType<typeof TaskSharedActions.addTask>;
+      expect(added.type).toBe(TaskSharedActions.addTask.type);
+      expect(added.workContextId).toBe('project-1');
+      expect(added.task.id).toBe('new');
+      // Only the add: nothing switches the focused task.
+      expect(mockStore.dispatch).toHaveBeenCalledTimes(1);
+      expect(snack).toHaveBeenCalled();
+    });
+
     it('log a break: ignores an empty or non-positive answer', async () => {
       answer('0');
       component.logBreak();
@@ -999,9 +1028,11 @@ describe('FocusModeMainComponent - notes panel (issue #5752)', () => {
     expect(buttons.length).toBe(7);
     expect(controls.querySelector('.secondary-actions-menu-btn')).toBeNull();
     expect(controls.querySelector('.cancel-session-btn')).not.toBeNull();
+    expect(controls.querySelector('.add-project-task-btn')).not.toBeNull();
     expect(controls.querySelector('.reset-cycles-btn')).not.toBeNull();
     expect(controls.querySelector('.open-issue-btn')).not.toBeNull();
-    expect(controls.querySelector('.show-notes-btn')).not.toBeNull();
+    // Notes toggle removed from focus mode in this fork (v3.1).
+    expect(controls.querySelector('.show-notes-btn')).toBeNull();
     expect(controls.querySelector('.mini-badge')?.textContent?.trim()).toBe('5');
   });
 
@@ -1036,7 +1067,7 @@ describe('FocusModeMainComponent - notes panel (issue #5752)', () => {
     );
   });
 
-  it('should open the secondary actions menu and toggle notes', async () => {
+  it('should open the secondary actions menu without a notes toggle', async () => {
     const trigger = fixture.nativeElement.querySelector(
       '.secondary-actions-menu-btn',
     ) as HTMLButtonElement;
@@ -1052,13 +1083,8 @@ describe('FocusModeMainComponent - notes panel (issue #5752)', () => {
       button.textContent?.includes('F.FOCUS_MODE.SHOW_HIDE_NOTES_AND_ATTACHMENTS'),
     );
 
-    expect(notesButton).toBeDefined();
-    expect(component.isFocusNotes()).toBe(false);
-
-    notesButton!.click();
-    fixture.detectChanges();
-
-    expect(component.isFocusNotes()).toBe(true);
+    expect(menuItems.length).toBeGreaterThan(0);
+    expect(notesButton).toBeUndefined();
   });
 
   it('should label every icon-only primary session action', () => {

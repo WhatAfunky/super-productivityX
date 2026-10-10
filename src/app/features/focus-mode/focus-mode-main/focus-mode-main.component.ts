@@ -94,6 +94,8 @@ import { DialogConfirmComponent } from '../../../ui/dialog-confirm/dialog-confir
 import { DialogPromptComponent } from '../../../ui/dialog-prompt/dialog-prompt.component';
 import { msToString } from '../../../ui/duration/ms-to-string.pipe';
 import { FocusSessionTimeService } from '../focus-session-time.service';
+import { WorkContextType } from '../../work-context/work-context.model';
+import { SnackService } from '../../../core/snack/snack.service';
 
 @Component({
   selector: 'focus-mode-main',
@@ -684,6 +686,45 @@ export class FocusModeMainComponent {
         // discard below covers everything this session tracked.
         this._store.dispatch(cancelFocusSession());
         await this._focusSessionTime.discard(taskId, elapsed);
+      });
+  }
+
+  /**
+   * Quick capture into the focused goal's project, without leaving focus
+   * mode or switching what is being worked on (unlike the task switcher).
+   */
+  addProjectTask(): void {
+    const projectId = this.displayedTask()?.projectId;
+    if (!projectId) return;
+    this._matDialog
+      .open(DialogPromptComponent, {
+        data: {
+          placeholder: T.F.FOCUS_MODE.ADD_PROJECT_TASK_PLACEHOLDER,
+          saveTxt: T.G.ADD,
+        },
+      })
+      .afterClosed()
+      .subscribe((title: string | undefined) => {
+        if (!title?.trim()) return;
+        const task = this.taskService.createNewTaskWithDefaults({
+          title: title.trim(),
+          workContextType: WorkContextType.PROJECT,
+          workContextId: projectId,
+        });
+        this._store.dispatch(
+          TaskSharedActions.addTask({
+            task,
+            workContextId: projectId,
+            workContextType: WorkContextType.PROJECT,
+            isAddToBacklog: false,
+            isAddToBottom: false,
+          }),
+        );
+        // Resolved on use: snack is UI feedback only, not a start-up dependency.
+        this._injector.get(SnackService).open({
+          msg: T.F.FOCUS_MODE.PROJECT_TASK_ADDED,
+          ico: 'add_task',
+        });
       });
   }
 
