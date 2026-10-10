@@ -1,0 +1,11 @@
+# Local macOS build for this machine (`npm run dist:mac:local`): ad-hoc
+# signed, not notarized, written to ./dist instead of the CI output folder.
+# The official config needs the upstream signing identity and notarization.
+extends: ./electron-builder.yaml
+directories:
+  output: ./dist
+mac:
+  identity: '-'
+  notarize: false
+  provisioningProfile: null
+  hardenedRuntime: false

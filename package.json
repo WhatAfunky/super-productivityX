@@ -41,6 +41,7 @@
     "dist:android:prod": "npm run buildFrontend:prodWeb && npm run sync:android && npm run assemble:android:prod && echo 'Production Android APK generated at android/app/build/outputs/apk/release/'",
     "dist:linuxAndWin": "npm run buildAllElectron:prod && electron-builder --linux --win",
     "dist:mac:dl": "cp tools/mac-profiles/dl.provisionprofile embedded.provisionprofile && electron-builder --mac",
+    "dist:mac:local": "npm run buildAllElectron:noTests:prod && electron-builder --mac dir --arm64 --config build/electron-builder.local-mac.yaml --publish never",
     "dist:mac:mas": "cp tools/mac-profiles/mas.provisionprofile embedded.provisionprofile; electron-builder --mac mas --config=build/electron-builder.mas.yaml",
     "dist:mac:mas:buildOnly": "electron-builder --config=build/electron-builder.mas.yaml",
     "dist:mac:mas:dev": "cp tools/mac-profiles/mas-dev.provisionprofile embedded.provisionprofile; electron-builder --mac mas-dev --config=build/electron-builder.mas-dev.yaml",
