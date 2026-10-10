@@ -784,6 +784,7 @@
       "UNGROUP": "Ungroup",
       "WORK_ON": "Work on this layer",
       "WORK_ON_TITLE": "Work on: {{title}}",
+      "GOAL_PARENT_TITLE": "Layers",
       "FOCUS_LAYER": "Layer",
       "MOVE_TO_PROJECT": "Move to project",
       "BACK_TO_FOCUS": "Back to focus mode",
