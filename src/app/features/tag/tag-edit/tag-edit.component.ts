@@ -181,8 +181,28 @@ export class TagEditComponent {
     this._add(id);
   }
 
+  /**
+   * Enter with the suggestions open. Fork behaviour: complete like most
+   * autocompletes (exact title, else the first suggestion for the typed text)
+   * and create a new tag only when nothing matches. Esc closes the panel
+   * first, to create the typed text as it is.
+   */
   commitText(text: string): void {
-    this._addByTitle(text);
+    if (this._getExistingSuggestionByTitle(text)) {
+      this._addByTitle(text);
+      return;
+    }
+    // Filter by the text itself: the input is already cleared at this point.
+    const prefix = text.toLowerCase();
+    const excluded = this.allExcludedTagIds();
+    const first = this.tagSuggestions().find(
+      (s) => s.title.toLowerCase().startsWith(prefix) && !excluded.includes(s.id),
+    );
+    if (first) {
+      this._add(first.id);
+    } else {
+      this._createNewTag(text);
+    }
   }
 
   private _clearInput(): void {

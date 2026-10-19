@@ -169,14 +169,23 @@ describe('ChipListInputComponent', () => {
       expect(addNewSpy).not.toHaveBeenCalled();
     });
 
-    it('Enter with no highlighted suggestion creates a new item from the typed text', async () => {
+    // Fork behaviour: Enter completes to the first suggestion (upstream #9722
+    // used the typed text as it is).
+    it('Enter with no highlighted suggestion completes to the first suggestion', async () => {
       await openPanelWith('ban');
 
       pressKey('Enter', ENTER);
 
-      expect(addNewSpy).toHaveBeenCalledOnceWith('ban');
-      expect(addSpy).not.toHaveBeenCalled();
+      expect(addSpy).toHaveBeenCalledOnceWith('B');
+      expect(addNewSpy).not.toHaveBeenCalled();
       expect(getInput().value).toBe('');
+    });
+
+    it('commitText creates a new item when no suggestion matches', () => {
+      component.commitText('zzz');
+
+      expect(addNewSpy).toHaveBeenCalledOnceWith('zzz');
+      expect(addSpy).not.toHaveBeenCalled();
     });
 
     it('Enter with no highlighted suggestion adds the existing item on an exact title match', async () => {

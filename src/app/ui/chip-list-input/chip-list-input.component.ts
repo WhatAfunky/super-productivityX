@@ -156,8 +156,19 @@ export class ChipListInputComponent {
     this._add(id);
   }
 
+  /**
+   * Enter with the suggestions open. Fork behaviour: complete like most
+   * autocompletes (exact title, else the first suggestion for the typed text)
+   * and create a new item only when nothing matches. Esc closes the panel
+   * first, to add the typed text as it is.
+   */
   commitText(text: string): void {
-    this._addByTitle(text);
+    const match = this._getExistingSuggestionByTitle(text) ?? this._filter(text)[0];
+    if (match) {
+      this._add(match.id);
+    } else {
+      this.addNewItem.emit(text);
+    }
   }
 
   private _clearInput(): void {

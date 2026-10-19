@@ -103,14 +103,23 @@ describe('TagEditComponent', () => {
       expect(addTagSpy).not.toHaveBeenCalled();
     });
 
-    it('Enter with no highlighted suggestion creates a new tag from the typed text', async () => {
+    // Fork behaviour: Enter completes to the first suggestion (upstream #9722
+    // used the typed text as it is).
+    it('Enter with no highlighted suggestion completes to the first suggestion', async () => {
       await openPanelWith('ban');
 
       pressKey('Enter', ENTER);
 
-      expect(addTagSpy).toHaveBeenCalledOnceWith({ title: 'ban' });
-      expect(tagUpdateSpy).toHaveBeenCalledOnceWith(['A', 'NEW']);
+      expect(tagUpdateSpy).toHaveBeenCalledOnceWith(['A', 'B']);
+      expect(addTagSpy).not.toHaveBeenCalled();
       expect(getInput().value).toBe('');
+    });
+
+    it('commitText creates a new tag when no suggestion matches', () => {
+      component.commitText('zzz');
+
+      expect(addTagSpy).toHaveBeenCalledOnceWith({ title: 'zzz' });
+      expect(tagUpdateSpy).toHaveBeenCalledOnceWith(['A', 'NEW']);
     });
 
     it('Enter with no highlighted suggestion adds the existing tag on an exact title match', async () => {
