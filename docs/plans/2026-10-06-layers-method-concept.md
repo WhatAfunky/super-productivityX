@@ -233,7 +233,7 @@ Organisation stops at four tools: folders, labels, groups, manual order. Nothing
 - Syncing screenshot blobs.
 - Archive/compact old layers if lists still feel heavy.
 
-**v3.1 — merge layers** (requested 2026-10-08, not started)
+**v3.1 — merge layers** (requested 2026-10-08; **shelved 2026-10-22**: after weeks of use the need never came up. The notes below are kept in case it returns.)
 
 Select several layers and merge them into one layer whose screenshot is a grid of theirs. Placed in v3.1, not v3.2, because it is medium-sized and mostly reuses existing parts:
 
@@ -417,7 +417,7 @@ After trying it, the user won't use the anchor, so its UI is commented out in `l
 
 - **v3.2: floating focus window.** Extend the existing Electron **Task widget** (an always-on-top window with a saved position and an opacity setting) instead of adding a second floating window. In focus mode it shows the layer thumbnail and title, the focus clock (Flowtime count-up, break stopwatch) and **all** controls: pause/resume, log a break, complete, cancel and open the main window. Cancel and log a break get inline versions in the widget (confirm, minutes field). The widget sends button presses over IPC to the hidden main window, which keeps running. To design: when it appears (a "pop out" button in focus mode that hides the main window, and/or automatically when the main window is hidden during a session), size, and the compact versus thumbnail layout.
 - **v3.3: auto screenshots.** Per layer, the user picks an app window. While a focus session runs on **that layer** (started with ▶), the window is captured every 5 minutes into a **history per layer** (a timelapse that can be viewed and exported), compressed like other screenshots. That is roughly 6 MB per hour of capture, so it needs a cap or a cleanup rule (to decide). Electron only. It uses `desktopCapturer` and needs macOS **Screen Recording** permission. With ad-hoc signed local builds (`dist:mac:local`), macOS ties that permission to the signature, so it may need re-granting after every rebuild. The window choice is device-local (window names are per machine). It replaces the v2 "in-app capture" item.
-- **v3.1 step 4: merge layers** is still waiting for its mockup.
+- **v3.1 step 4: merge layers**: shelved (2026-10-22). Never needed in practice; revisit only if it comes up.
 
 ## 24. v3.2 floating focus window as built (2026-10-22)
 
