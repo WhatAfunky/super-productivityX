@@ -384,7 +384,9 @@
               <div class="win-ico">Ps</div>
               <div style="min-width: 0">
                 <div class="small">Storyboard_v3.psd @ 33%</div>
-                <div class="small muted">Adobe Photoshop · every 5 min · 46 captures</div>
+                <div class="small muted">
+                  every 5 min + Capture now · 46 captures · 18 MB
+                </div>
               </div>
             </div>
             <div
@@ -401,7 +403,9 @@
             </div>
           </div>
           <div class="note">
-            "Capture now" also works outside a session — handy for a key moment.
+            Both automatic (every 5 min while focusing) and <b>Capture now</b>, which also
+            works outside a session. Each capture becomes the layer's screenshot
+            automatically.
           </div>
         </div>
 
@@ -562,60 +566,71 @@
         ></div>
       </div>
 
-      <h2>4 · Keeping the history small — pick one</h2>
+      <h2>4 · Keeping the history in check — 100 MB per layer</h2>
       <p class="muted">
-        A 5-minute capture is ~0.3–0.5 MB after WebP compression, so ~5 MB per hour of
-        focus.
+        A capture is ~0.3–0.5 MB after WebP compression (~5 MB per hour of focus), so 100
+        MB ≈ 20 hours of focus on one layer. Nothing is deleted on its own.
       </p>
       <div class="grid">
-        <div class="opt">
-          <b class="k">A · Keep the last N per layer</b>
-          <p class="small muted">
-            e.g. 300 captures (= 25 h of focus). Oldest are dropped first. Simple, but
-            long projects lose their beginning.
-          </p>
+        <div class="stage">
+          <div class="label">When a layer passes 100 MB</div>
+          <div class="banner warn">
+            <b>"Storyboard · Shot A" has 104 MB of captures.</b><br />
+            Captures keep going. What should happen to the history?
+            <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap">
+              <button class="btn primary">Thin out older captures</button>
+              <button class="btn">Export &amp; clear</button>
+              <button class="btn">Keep everything</button>
+            </div>
+          </div>
+          <div class="note">
+            <b>Thin out</b>: keep every capture of the last 7 days, one per hour of focus
+            before that, one per day after 30 days (frees most of it, keeps the whole
+            story). <b>Export &amp; clear</b>: save all as a ZIP, then delete them.
+            <b>Keep everything</b>: ask again at the next 100 MB (200, 300…).
+          </div>
         </div>
-        <div class="opt">
-          <b class="k">B · Thin out older captures (recommended)</b>
-          <p class="small muted">
-            Keep every capture for 7 days, then one per hour of focus, then one per day
-            after 30 days. The whole story stays, small: a 3-month project ≈ 150–250 MB.
-          </p>
-        </div>
-        <div class="opt">
-          <b class="k">C · Storage cap for all layers</b>
-          <p class="small muted">
-            e.g. 2 GB total; when full, thin out the oldest captures first (as in B).
-            Predictable disk use; with many busy layers it eats into older history sooner.
-          </p>
+        <div class="stage">
+          <div class="label">Where it shows</div>
+          <div class="lrow">
+            <div class="thumb"></div>
+            <div>
+              <div class="title">Storyboard · Shot A</div>
+              <div class="small muted">Oct 22, 2026</div>
+            </div>
+            <span
+              class="chip"
+              style="color: var(--warn)"
+              >⚠ 104 MB</span
+            >
+          </div>
+          <div class="note">
+            A chip on the row and the banner in the layer's preview — no popup while you
+            work.
+          </div>
         </div>
       </div>
 
-      <h2>5 · Decisions for you</h2>
-      <div class="q"><b>1.</b> History limit: A, B or C (or B + a cap).</div>
+      <h2>5 · Decided (2026-10-22)</h2>
       <div class="q">
-        <b>2.</b> Should the layer's main screenshot update automatically to the latest
-        capture, or only when you press "Use as layer screenshot"?
-      </div>
-      <div class="q">
-        <b>3.</b> Keep "Capture now" (manual capture on demand), or only automatic?
-      </div>
-      <div class="q">
-        <b>4.</b> Fixed so far:
         <ul>
+          <li>A plain <b>window picker</b> (thumbnails + titles of open windows).</li>
           <li>
-            Per layer, one chosen window; every 5 minutes; only while focusing on that
-            layer.
+            Captures every 5 min while you focus on that layer (▶), plus
+            <b>Capture now</b>.
+          </li>
+          <li>Each capture <b>automatically</b> becomes the layer's screenshot.</li>
+          <li>
+            History per layer; a warning with options at <b>100 MB</b> per layer (then
+            200…).
           </li>
           <li>
-            Captures stay on this computer (not synced). The window choice is per computer
-            too.
+            Desktop only; captures and the window choice stay on this computer (not
+            synced).
           </li>
           <li>
-            Window identity: the OS gives window titles, not app names, and the window id
-            changes when the app restarts. The app re-finds the window by its id, else by
-            a matching title start (e.g. "Storyboard_v3.psd"); if neither works it skips
-            and asks you to re-pick.
+            Finding the window again: its window id, else a window whose title matches,
+            else skip the capture and ask to re-pick.
           </li>
         </ul>
       </div>

@@ -430,3 +430,15 @@ Decisions: layout **A** (compact bar) by default and **B** (card with a larger s
 - **Inline panels:** cancel and log-a-break open over the widget at any size, since the widget window doesn't grow. They're a confirm with the live time, and a minutes field (Enter submits, Esc closes).
 - **Renderer constraint:** `task-widget-renderer.ts` runs as a plain `<script>`, so it has no imports; its types come from the global `taskWidgetAPI` declaration.
 - **Verified:** Angular suite 16,952 passing, incl. specs for `FocusSessionControlService` and `FocusWidgetService` (phase, action validation, routing); Electron `focus-widget.test.cjs`: pop-out with the setting off, ending on main show, cache re-sent on load, image filter, action validation and sender check; 334 Electron tests passing. The widget page was rendered with a stand-in API in all states (A work, Flowtime break, Pomodoro plain task, inline cancel, inline log, tiny, B work, B break), and every button produced the right action. **Not yet exercised in the real Electron app**: the user tests it in the next build.
+
+## 25. v3.3 auto screenshots: decisions (2026-10-22)
+
+Mockup: `docs/plans/2026-10-22-auto-screenshots-mockup.html`.
+
+- **Window picker:** a plain picker with thumbnails and titles of open windows, from Electron's `desktopCapturer` on all desktop OSes. An app-first picker was considered and dropped: Electron reports no owning app, so it would need an extra macOS-only CoreGraphics call, which was tested and works but isn't worth it.
+- **When:** every 5 minutes while a focus session runs on that layer (▶), plus a **Capture now** button that also works outside sessions.
+- **Layer screenshot:** each capture **automatically** becomes the layer's screenshot, so the list, compare and floating window show the latest state.
+- **History per layer, warning at 100 MB:** nothing is deleted on its own. Past 100 MB a banner (and a chip on the row) offers **Thin out older captures** (keep the last 7 days, then one per hour of focus, then one per day after 30 days), **Export & clear** (ZIP, then delete), or **Keep everything** (ask again at 200, 300…).
+- **Device-local:** captures and the window choice are not synced.
+- **Finding the window again:** by window id, else by matching title, else skip the capture and ask the user to re-pick (a one-time note, no popups).
+- **macOS:** needs Screen Recording permission. The app detects a missing permission (blank captures) and shows a banner with "Open System Settings" instead of saving blank images. Ad-hoc local builds may need re-granting after each rebuild.
