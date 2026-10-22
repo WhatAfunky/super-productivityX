@@ -6,6 +6,7 @@
 // create-task-placeholder's `NodeJS.Timeout`),
 // so re-expose them explicitly instead of by accident.
 /// <reference types="node" />
+import { FocusWidgetState } from './shared-with-frontend/focus-widget.model';
 import {
   GlobalConfigState,
   TakeABreakConfig,
@@ -241,6 +242,15 @@ export interface ElectronAPI {
   sendSettingsUpdate(globalCfg: GlobalConfigState): void;
 
   updateTaskWidgetSettings(cfg: TaskWidgetConfig): void;
+
+  /** Floating focus window: the running session (null = none). */
+  updateFocusWidget(state: FocusWidgetState | null): void;
+
+  /** Floating focus window: the layer thumbnail as a data URL (null = none). */
+  updateFocusWidgetImage(dataUrl: string | null): void;
+
+  /** Hide the main window and show the floating focus window. */
+  popOutFocusWidget(): void;
 
   updateTitleBarDarkMode(isDarkMode: boolean): void;
 

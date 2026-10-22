@@ -12,6 +12,11 @@ import { info } from 'electron-log/main';
 import { IPC } from '../shared-with-frontend/ipc-events.const';
 import { loadSimpleStoreAll, saveSimpleStore } from '../simple-store';
 import { IS_MAC } from '../common.const';
+import {
+  FOCUS_WIDGET_MAX_IMAGE_LENGTH,
+  FocusWidgetState,
+  parseFocusWidgetAction,
+} from '../shared-with-frontend/focus-widget.model';
 
 let taskWidgetWin: BrowserWindow | null = null;
 let isTaskWidgetEnabled = false;
@@ -36,6 +41,14 @@ let taskWidgetCreationPromise: Promise<void> | null = null;
 let taskWidgetCreationGeneration = 0;
 let pendingShowAfterCreate = false;
 let pendingShowAfterCreateInactive = false;
+// Floating focus window: "pop out" from focus mode shows the widget even when
+// the Task widget setting is off, until the main window is shown again.
+let isFocusPopOut = false;
+let focusState: FocusWidgetState | null = null;
+let focusImage: string | null = null;
+let focusListenersRegistered = false;
+
+const isWidgetActive = (): boolean => isTaskWidgetEnabled || isFocusPopOut;
 
 const TASK_WIDGET_BOUNDS_KEY = 'taskWidgetBounds';
 const LEGACY_BOUNDS_KEY = 'overlayBounds';
@@ -95,6 +108,7 @@ export const destroyTaskWidget = (): void => {
 
   // Disable task widget to prevent close event prevention
   isTaskWidgetEnabled = false;
+  isFocusPopOut = false;
   isUserForcedVisible = false;
   clearPendingTaskWidgetCreation();
 
@@ -200,7 +214,7 @@ const createTaskWidgetWindowForGeneration = async (
 
   if (
     taskWidgetWin ||
-    !isTaskWidgetEnabled ||
+    !isWidgetActive() ||
     creationGeneration !== taskWidgetCreationGeneration
   ) {
     return;
@@ -243,7 +257,8 @@ const createTaskWidgetWindowForGeneration = async (
     minWidth: 60,
     minHeight: 24,
     maxWidth: 700,
-    maxHeight: 120,
+    // Tall enough for the focus layout's card (layout B, v3.2).
+    maxHeight: 420,
     minimizable: false,
     maximizable: false,
     closable: true, // Ensure window is closable
@@ -260,6 +275,8 @@ const createTaskWidgetWindowForGeneration = async (
   // reload also restores the correct opacity. macOS re-calls setOpacity() idempotently.
   taskWidgetWin.webContents.on('did-finish-load', () => {
     updateTaskWidgetOpacity(currentOpacity);
+    // Sends before the page loaded were dropped; re-deliver the focus layout.
+    sendFocusToWidget();
   });
 
   // Set visible on all workspaces immediately after creation
@@ -339,7 +356,7 @@ const showTaskWidgetWindow = (options: ShowTaskWidgetOptions = {}): void => {
 };
 
 export const showTaskWidget = (options: ShowTaskWidgetOptions = {}): void => {
-  if (!isTaskWidgetEnabled) {
+  if (!isWidgetActive()) {
     return;
   }
 
@@ -366,7 +383,10 @@ export const showTaskWidget = (options: ShowTaskWidgetOptions = {}): void => {
 };
 
 export const hideTaskWidget = (): void => {
-  if (!taskWidgetWin || !isTaskWidgetEnabled) {
+  // Showing the main window ends a focus pop-out.
+  const wasActive = isWidgetActive();
+  isFocusPopOut = false;
+  if (!taskWidgetWin || !wasActive) {
     info(
       'Task widget hide skipped: window=' +
         !!taskWidgetWin +
@@ -457,7 +477,7 @@ export const updateTaskWidgetTask = (
 };
 
 const updateTaskWidgetContent = (): void => {
-  if (!taskWidgetWin || !isTaskWidgetEnabled) {
+  if (!taskWidgetWin || !isWidgetActive()) {
     return;
   }
 
@@ -535,6 +555,100 @@ export const initTaskWidgetSettingsListener = (): void => {
   taskWidgetSettingsListenerRegistered = true;
   ipcMain.on(IPC.UPDATE_TASK_WIDGET_SETTINGS, (_ev, cfg: TaskWidgetConfig) => {
     applyTaskWidgetSettings(cfg);
+  });
+};
+
+// ---------------------------------------------------------------------------
+// Floating focus window (v3.2)
+// ---------------------------------------------------------------------------
+
+const FOCUS_MIN_WIDTH = 320;
+const FOCUS_MIN_HEIGHT = 112;
+
+const sendFocusToWidget = (): void => {
+  if (!taskWidgetWin || taskWidgetWin.isDestroyed()) return;
+  taskWidgetWin.webContents.send('update-focus', focusState);
+  taskWidgetWin.webContents.send('update-focus-image', focusImage);
+};
+
+const findMainWindow = (): BrowserWindow | undefined =>
+  BrowserWindow.getAllWindows().find((win) => win !== taskWidgetWin);
+
+export const updateFocusWidgetState = (state: FocusWidgetState | null): void => {
+  focusState = state && typeof state === 'object' ? state : null;
+  if (taskWidgetWin && !taskWidgetWin.isDestroyed()) {
+    taskWidgetWin.webContents.send('update-focus', focusState);
+  }
+};
+
+export const updateFocusWidgetImage = (dataUrl: unknown): void => {
+  focusImage =
+    typeof dataUrl === 'string' &&
+    dataUrl.startsWith('data:image/') &&
+    dataUrl.length <= FOCUS_WIDGET_MAX_IMAGE_LENGTH
+      ? dataUrl
+      : null;
+  if (taskWidgetWin && !taskWidgetWin.isDestroyed()) {
+    taskWidgetWin.webContents.send('update-focus-image', focusImage);
+  }
+};
+
+/** Grows a too-small widget to fit the compact focus layout (layout A). */
+const ensureFocusSize = (): void => {
+  if (!taskWidgetWin || taskWidgetWin.isDestroyed()) return;
+  const b = taskWidgetWin.getBounds();
+  if (b.width < FOCUS_MIN_WIDTH || b.height < FOCUS_MIN_HEIGHT) {
+    taskWidgetWin.setBounds({
+      ...b,
+      width: Math.max(b.width, FOCUS_MIN_WIDTH),
+      height: Math.max(b.height, FOCUS_MIN_HEIGHT),
+    });
+  }
+};
+
+/**
+ * "Pop out" from focus mode: show the widget (creating it even when the Task
+ * widget setting is off) and hide the main window, which keeps running.
+ */
+export const popOutFocusWidget = (mainWin: BrowserWindow | null | undefined): void => {
+  isFocusPopOut = true;
+  initListeners();
+  if (taskWidgetWin && !taskWidgetWin.isDestroyed()) {
+    ensureFocusSize();
+    showTaskWidgetWindow();
+  } else {
+    pendingShowAfterCreate = true;
+    createTaskWidgetWindow().then(() => ensureFocusSize());
+  }
+  if (mainWin && !mainWin.isDestroyed()) {
+    mainWin.hide();
+  }
+};
+
+export const getIsFocusPopOut = (): boolean => isFocusPopOut;
+
+export const initFocusWidgetListeners = (): void => {
+  if (focusListenersRegistered) return;
+  focusListenersRegistered = true;
+
+  ipcMain.on(IPC.FOCUS_WIDGET_STATE, (_ev, state: FocusWidgetState | null) => {
+    updateFocusWidgetState(state);
+  });
+  ipcMain.on(IPC.FOCUS_WIDGET_IMAGE, (_ev, dataUrl: unknown) => {
+    updateFocusWidgetImage(dataUrl);
+  });
+  ipcMain.on(IPC.FOCUS_WIDGET_POP_OUT, (ev) => {
+    popOutFocusWidget(BrowserWindow.fromWebContents(ev.sender));
+  });
+  // From the widget: forward validated button presses to the main window,
+  // which runs the same logic as the focus-mode buttons.
+  ipcMain.on('task-widget-focus-action', (ev, raw: unknown) => {
+    if (!taskWidgetWin || ev.sender !== taskWidgetWin.webContents) return;
+    const action = parseFocusWidgetAction(raw);
+    const mainWindow = findMainWindow();
+    if (action && mainWindow && !mainWindow.webContents.isDestroyed()) {
+      mainWindow.webContents.send(IPC.FOCUS_WIDGET_ACTION, action);
+    }
   });
 };
 

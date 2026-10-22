@@ -21,13 +21,11 @@ import { IssueService } from '../../issue/issue.service';
 import { Store } from '@ngrx/store';
 import {
   adjustRemainingTime,
-  cancelFocusSession,
   completeFocusSession,
   completeTask,
   endFlowtimeSession,
   focusModeLoaded,
   hideFocusOverlay,
-  logFlowtimeBreak,
   pauseFocusSession,
   resetCycles,
   selectFocusTask,
@@ -93,7 +91,9 @@ import { selectProjectFeatureState } from '../../project/store/project.selectors
 import { DialogConfirmComponent } from '../../../ui/dialog-confirm/dialog-confirm.component';
 import { DialogPromptComponent } from '../../../ui/dialog-prompt/dialog-prompt.component';
 import { msToString } from '../../../ui/duration/ms-to-string.pipe';
-import { FocusSessionTimeService } from '../focus-session-time.service';
+import { FocusSessionControlService } from '../focus-session-control.service';
+import { FocusWidgetService } from '../focus-widget.service';
+import { IS_ELECTRON } from '../../../app.constants';
 import { WorkContextType } from '../../work-context/work-context.model';
 import { SnackService } from '../../../core/snack/snack.service';
 
@@ -664,7 +664,15 @@ export class FocusModeMainComponent {
     this._store.dispatch(hideFocusOverlay());
   }
 
-  private readonly _focusSessionTime = inject(FocusSessionTimeService);
+  private readonly _sessionControl = inject(FocusSessionControlService);
+  private readonly _focusWidget = inject(FocusWidgetService);
+  /** Desktop app only: the floating focus window lives in Electron. */
+  readonly isPopOutAvailable = IS_ELECTRON;
+
+  /** Hides the main window and shows the floating focus window. */
+  popOut(): void {
+    this._focusWidget.popOut();
+  }
 
   /** Ends the session and takes the time it tracked back off the goal. */
   cancelSession(): void {
@@ -682,10 +690,7 @@ export class FocusModeMainComponent {
       .afterClosed()
       .subscribe(async (isConfirm) => {
         if (!isConfirm) return;
-        // Stop first: tracking stops and flushes its pending time, so the
-        // discard below covers everything this session tracked.
-        this._store.dispatch(cancelFocusSession());
-        await this._focusSessionTime.discard(taskId, elapsed);
+        await this._sessionControl.cancel(taskId, elapsed);
       });
   }
 
@@ -744,10 +749,7 @@ export class FocusModeMainComponent {
       .subscribe(async (value: string | undefined) => {
         const minutes = Number(value);
         if (!value || !(minutes > 0)) return;
-        // Capped at the session's elapsed time, like the clock itself.
-        const amountMs = Math.min(minutes * 60000, this.focusModeService.timeElapsed());
-        this._store.dispatch(logFlowtimeBreak({ amountMs }));
-        await this._focusSessionTime.discard(taskId, amountMs);
+        await this._sessionControl.logBreak(minutes * 60000, taskId);
       });
   }
 

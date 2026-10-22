@@ -336,6 +336,18 @@
         </button>
       } @else {
         <!-- Secondary: grouped in the ⋮ menu on small screens -->
+        @if (isShowCompleteSessionButton() && isPopOutAvailable) {
+          <button
+            mat-icon-button
+            class="pop-out-btn"
+            [matTooltip]="T.F.FOCUS_MODE.POP_OUT | translate"
+            [attr.aria-label]="T.F.FOCUS_MODE.POP_OUT | translate"
+            (click)="popOut()"
+          >
+            <mat-icon>picture_in_picture_alt</mat-icon>
+          </button>
+        }
+
         @if (isShowCompleteSessionButton()) {
           <button
             mat-icon-button
@@ -408,6 +420,16 @@
 
 <mat-menu #secondarySessionActions="matMenu">
   <ng-template matMenuContent>
+    @if (isShowCompleteSessionButton() && isPopOutAvailable) {
+      <button
+        mat-menu-item
+        (click)="popOut()"
+      >
+        <mat-icon>picture_in_picture_alt</mat-icon>
+        <span>{{ T.F.FOCUS_MODE.POP_OUT | translate }}</span>
+      </button>
+    }
+
     @if (isShowCompleteSessionButton()) {
       <button
         mat-menu-item

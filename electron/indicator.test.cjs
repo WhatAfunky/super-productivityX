@@ -142,6 +142,7 @@ const installMocks = () => {
         updateTaskWidgetOpacity: () => {},
         updateTaskWidgetTask: () => {},
         initTaskWidgetSettingsListener: () => {},
+        initFocusWidgetListeners: () => {},
       };
     }
 

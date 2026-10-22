@@ -200,6 +200,9 @@ const ea: ElectronAPI = {
     _send('TRANSFER_SETTINGS_TO_ELECTRON', globalCfg),
   sendSettingsUpdate: (globalCfg) => _send('UPDATE_SETTINGS', globalCfg),
   updateTaskWidgetSettings: (cfg) => _send('UPDATE_TASK_WIDGET_SETTINGS', cfg),
+  updateFocusWidget: (state) => _send('FOCUS_WIDGET_STATE', state),
+  updateFocusWidgetImage: (dataUrl) => _send('FOCUS_WIDGET_IMAGE', dataUrl),
+  popOutFocusWidget: () => _send('FOCUS_WIDGET_POP_OUT'),
   updateTitleBarDarkMode: (isDarkMode: boolean) =>
     _send('UPDATE_TITLE_BAR_DARK_MODE', isDarkMode),
   registerGlobalShortcuts: (keyboardCfg) =>

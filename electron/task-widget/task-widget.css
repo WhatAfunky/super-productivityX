@@ -167,3 +167,253 @@ body * {
   margin-left: 0;
   padding-left: 0;
 }
+
+/* ── Floating focus window (v3.2) ──────────────────────────────────────── */
+[hidden] {
+  display: none !important;
+}
+
+#focus-widget {
+  --fw-bg: rgba(250, 250, 250, var(--opacity));
+  --fw-solid: #fafafa;
+  --fw-text: #222;
+  --fw-muted: #6b7275;
+  --fw-line: rgba(0, 0, 0, 0.1);
+  --fw-hover: rgba(0, 0, 0, 0.06);
+  --fw-primary: #26b5a0;
+  --fw-primary-ink: #052a25;
+  --fw-warn: #b8741b;
+  --fw-danger: #d55454;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  height: 100vh;
+  padding: 10px 10px 8px;
+  background: var(--fw-bg);
+  color: var(--fw-text);
+  border-radius: 10px;
+  -webkit-app-region: drag;
+  position: relative;
+}
+
+@media (prefers-color-scheme: dark) {
+  #focus-widget {
+    --fw-bg: rgba(27, 30, 32, var(--opacity));
+    --fw-solid: #1b1e20;
+    --fw-text: #e9ecec;
+    --fw-muted: #9aa3a6;
+    --fw-line: rgba(255, 255, 255, 0.1);
+    --fw-hover: rgba(255, 255, 255, 0.08);
+    --fw-warn: #e5a54b;
+    --fw-danger: #e46a6a;
+  }
+}
+
+.fw-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 0;
+}
+
+#fw-thumb {
+  flex: none;
+  width: 56px;
+  height: 42px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--fw-line);
+}
+
+.fw-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+#fw-context,
+#fw-mode {
+  font-size: 11px;
+  color: var(--fw-muted);
+}
+
+#fw-context,
+#fw-goal {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#fw-goal {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+#fw-break {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fw-warn);
+}
+
+#fw-break:empty {
+  display: none;
+}
+
+.fw-clock-wrap {
+  flex: none;
+  text-align: right;
+}
+
+#fw-clock {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.fw-on-break #fw-clock {
+  color: var(--fw-muted);
+}
+
+#fw-buttons {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid var(--fw-line);
+  padding-top: 6px;
+}
+
+.fw-ib {
+  -webkit-app-region: no-drag;
+  width: 32px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fw-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.fw-ib:hover {
+  background: var(--fw-hover);
+}
+
+.fw-ib svg {
+  width: 17px;
+  height: 17px;
+  fill: currentColor;
+}
+
+.fw-ib.fw-primary {
+  background: var(--fw-primary);
+  color: var(--fw-primary-ink);
+}
+
+/* Inline confirm / minutes field: covers the widget at any size, since the
+   widget window does not grow. */
+#fw-inline {
+  -webkit-app-region: no-drag;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px 12px;
+  font-size: 13px;
+  background: var(--fw-solid);
+  border-radius: 10px;
+}
+
+#fw-inline input {
+  width: 56px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--fw-line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.fw-inline-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.fw-tb {
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--fw-line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.fw-tb.fw-primary {
+  background: var(--fw-primary);
+  border-color: var(--fw-primary);
+  color: var(--fw-primary-ink);
+  font-weight: 600;
+}
+
+.fw-tb.fw-danger {
+  background: var(--fw-danger);
+  border-color: var(--fw-danger);
+  color: #2a0b0b;
+  font-weight: 600;
+}
+
+/* Layout B: card with the screenshot, when resized taller. */
+.fw-card .fw-main {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  flex: 1;
+}
+
+.fw-card .fw-titles {
+  flex: none;
+}
+
+.fw-card #fw-thumb {
+  width: 100%;
+  height: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.fw-card .fw-clock-wrap {
+  text-align: left;
+}
+
+.fw-card #fw-clock {
+  font-size: 40px;
+  line-height: 1.1;
+}
+
+.fw-card #fw-buttons {
+  justify-content: center;
+  gap: 10px;
+}
+
+.fw-card .fw-ib {
+  width: 38px;
+  height: 36px;
+}
+
+/* Tiny: a single row (title + clock), like the plain widget. */
+.fw-tiny #fw-thumb,
+.fw-tiny #fw-context,
+.fw-tiny #fw-mode,
+.fw-tiny #fw-buttons,
+.fw-tiny #fw-inline {
+  display: none !important;
+}
+
+.fw-tiny #focus-widget {
+  justify-content: center;
+  padding: 4px 10px;
+}

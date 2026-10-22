@@ -21,6 +21,33 @@
         ▲
       </button>
     </div>
+    <!-- Floating focus window (v3.2): shown while a focus session runs. -->
+    <div
+      id="focus-widget"
+      hidden
+    >
+      <div class="fw-main">
+        <img
+          id="fw-thumb"
+          alt=""
+          hidden
+        />
+        <div class="fw-titles">
+          <div id="fw-context"></div>
+          <div id="fw-goal"></div>
+          <div id="fw-break"></div>
+        </div>
+        <div class="fw-clock-wrap">
+          <div id="fw-clock">--:--</div>
+          <div id="fw-mode"></div>
+        </div>
+      </div>
+      <div id="fw-buttons"></div>
+      <div
+        id="fw-inline"
+        hidden
+      ></div>
+    </div>
     <script src="task-widget-renderer.js"></script>
   </body>
 </html>

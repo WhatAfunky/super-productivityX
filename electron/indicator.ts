@@ -15,6 +15,7 @@ import { TaskCopy } from '../src/app/features/tasks/task.model';
 import { release } from 'os';
 import {
   initTaskWidgetSettingsListener,
+  initFocusWidgetListeners,
   updateTaskWidgetTask,
 } from './task-widget/task-widget';
 import { getWin } from './main-window';
@@ -206,6 +207,7 @@ function initListeners(): void {
   // Task widget settings are per-instance (not synced) — handled via a
   // dedicated IPC channel in task-widget.ts.
   initTaskWidgetSettingsListener();
+  initFocusWidgetListeners();
 
   ipcMain.on(IPC.SET_PROGRESS_BAR, (ev: IpcMainEvent, { progress }) => {
     // Exactly one writer may own the tray icon per tick, otherwise the menu bar
