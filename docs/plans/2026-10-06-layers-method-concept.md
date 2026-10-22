@@ -410,7 +410,7 @@ After trying it, the user won't use the anchor, so its UI is commented out in `l
 
 **Built:**
 
-- **Session-done buttons swapped:** "Start next session" now comes first, "Back to Planning" second (fork-only order, with a comment in the template).
+- **Session-done buttons:** "Back to Planning" is the main action: the highlighted (primary) button, on the right. "Start next session" is the outlined one on the left. (First attempt swapped only the order; corrected the same day.)
 - **"Where I left off" start page:** a new `DefaultStartPage.LastPage = 5`. `LastPageService` remembers the last main view on this device (`LS.LAST_PAGE_URL`, never synced). Only an allowlist is restorable (`parseRestorablePage`: `/project/:id/(tasks|layers)`, `/tag/:id/tasks`, `/planner`, `/schedule`, `/boards`). `DefaultStartPageGuard` restores it only if the project is still visible, the tag still exists, or the feature is still on; otherwise it opens Today. Clients without the value (upstream, other devices) fall back to Today, because `getStartPageUrlPath`'s default branch handles unknown numbers. Wiki updated (`3.02`, Default start page).
 
 **Decided, to plan (each starts with a mockup):**

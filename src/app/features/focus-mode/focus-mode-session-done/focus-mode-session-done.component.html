@@ -22,10 +22,9 @@
 </div>
 
 <div class="btn-wrapper">
-  <!-- Fork: the primary action comes first (v3.1 feedback, 2026-10-22). -->
+  <!-- Fork: Back to Planning is the main (highlighted, right) action (feedback 2026-10-22). -->
   <button
-    mat-raised-button
-    color="primary"
+    mat-stroked-button
     (click)="currentTask() ? continueWithFocusSession() : startNextFocusSession()"
   >
     <mat-icon>arrow_forward</mat-icon>
@@ -33,7 +32,8 @@
   </button>
 
   <button
-    mat-stroked-button
+    mat-raised-button
+    color="primary"
     (click)="cancelAndCloseFocusOverlay()"
   >
     <mat-icon>arrow_back</mat-icon>
