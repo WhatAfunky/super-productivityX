@@ -78,6 +78,7 @@ import { getDroppedUrl } from './core/drop-paste-input/drop-paste-input';
 import { readableUrl } from './util/readable-url';
 import { MobileBottomNavComponent } from './core-ui/mobile-bottom-nav/mobile-bottom-nav.component';
 import { StartupService } from './core/startup/startup.service';
+import { LastPageService } from './features/config/last-page.service';
 import { DataInitStateService } from './core/data-init/data-init-state.service';
 import { AppUriTaskActionsService } from './features/tasks/app-uri-actions/app-uri-task-actions.service';
 import { IosShareService } from './features/tasks/ios-share/ios-share.service';
@@ -156,6 +157,7 @@ export class AppComponent implements OnDestroy, AfterViewInit {
   private _ngZone = inject(NgZone);
   private _document = inject(DOCUMENT, { optional: true });
   private _startupService = inject(StartupService);
+  private _lastPageService = inject(LastPageService);
   // Injected for side-effect: creates example tasks on first run
   private _exampleTasksService = inject(ExampleTasksService);
   // Injected for side-effect: loads per-instance task widget settings from
@@ -231,6 +233,7 @@ export class AppComponent implements OnDestroy, AfterViewInit {
 
   constructor() {
     this._startupService.init();
+    this._lastPageService.init();
     this._iosShareService.start();
     void this._materialIconsLoaderService.ensureFontReady();
 

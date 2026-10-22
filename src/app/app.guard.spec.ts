@@ -12,6 +12,10 @@ import { TODAY_TAG } from './features/tag/tag.const';
 import { INBOX_PROJECT } from './features/project/project.const';
 import { Project } from './features/project/project.model';
 import { APP_ROUTES } from './app.routes';
+import { TagService } from './features/tag/tag.service';
+import { LastPageService } from './features/config/last-page.service';
+import { DefaultStartPage } from './features/config/default-start-page.const';
+import { RestorablePage } from './features/config/last-page.util';
 
 @Component({ standalone: true, template: '' })
 class DonateRouteTestComponent {}
@@ -25,6 +29,8 @@ describe('DefaultStartPageGuard', () => {
   let misc$: BehaviorSubject<{ defaultStartPage?: number | string } | undefined>;
   let appFeatures: jasmine.Spy;
   let getByIdOnce$: jasmine.Spy;
+  let getTagById$: jasmine.Spy;
+  let lastPage: RestorablePage | null;
 
   const TODAY_URL = `/tag/${TODAY_TAG.id}/tasks`;
 
@@ -55,6 +61,8 @@ describe('DefaultStartPageGuard', () => {
       isBoardsEnabled: true,
     });
     getByIdOnce$ = jasmine.createSpy('getByIdOnce$').and.returnValue(of(undefined));
+    getTagById$ = jasmine.createSpy('getTagById$').and.returnValue(of(undefined));
+    lastPage = null;
 
     TestBed.configureTestingModule({
       providers: [
@@ -71,6 +79,8 @@ describe('DefaultStartPageGuard', () => {
           provide: ProjectService,
           useValue: { getByIdOnce$ },
         },
+        { provide: TagService, useValue: { getTagById$ } },
+        { provide: LastPageService, useValue: { read: () => lastPage } },
       ],
     });
     guard = TestBed.inject(DefaultStartPageGuard);
@@ -172,6 +182,47 @@ describe('DefaultStartPageGuard', () => {
   it('falls back to Today when misc config itself is undefined', async () => {
     misc$.next(undefined);
     expectUrl(await runGuard(), TODAY_URL);
+  });
+
+  describe('LastPage ("Where I left off")', () => {
+    beforeEach(() => misc$.next({ defaultStartPage: DefaultStartPage.LastPage }));
+
+    it('restores the last project page (incl. the Layers view)', async () => {
+      lastPage = { kind: 'project', id: 'p1', path: '/project/p1/layers' };
+      getByIdOnce$.and.returnValue(of(fakeProject()));
+      expectUrl(await runGuard(), '/project/p1/layers');
+    });
+
+    it('falls back to Today for a missing, archived or hidden project', async () => {
+      lastPage = { kind: 'project', id: 'p1', path: '/project/p1/layers' };
+      for (const project of [
+        undefined,
+        fakeProject({ isArchived: true }),
+        fakeProject({ isHiddenFromMenu: true }),
+      ]) {
+        getByIdOnce$.and.returnValue(of(project));
+        expectUrl(await runGuard(), TODAY_URL);
+      }
+      getByIdOnce$.and.returnValue(throwError(() => new Error('lookup')));
+      expectUrl(await runGuard(), TODAY_URL);
+    });
+
+    it('restores a tag page only while the tag exists', async () => {
+      lastPage = { kind: 'tag', id: 't1', path: '/tag/t1/tasks' };
+      getTagById$.and.returnValue(of({ id: 't1' }));
+      expectUrl(await runGuard(), '/tag/t1/tasks');
+      getTagById$.and.returnValue(of(undefined));
+      expectUrl(await runGuard(), TODAY_URL);
+    });
+
+    it('restores planner only while the feature is on, and Today without a page', async () => {
+      lastPage = { kind: 'planner', path: '/planner' };
+      expectUrl(await runGuard(), '/planner');
+      appFeatures.and.returnValue({ isPlannerEnabled: false });
+      expectUrl(await runGuard(), TODAY_URL);
+      lastPage = null;
+      expectUrl(await runGuard(), TODAY_URL);
+    });
   });
 });
 

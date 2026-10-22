@@ -17,6 +17,8 @@ import { selectIsOverlayShown } from './features/focus-mode/store/focus-mode.sel
 import { DataInitStateService } from './core/data-init/data-init-state.service';
 import { GlobalConfigService } from './features/config/global-config.service';
 import { getStartPageUrlPath } from './features/config/default-start-page.util';
+import { DefaultStartPage } from './features/config/default-start-page.const';
+import { LastPageService } from './features/config/last-page.service';
 import { IS_DONATION_UI_RESTRICTED_TOKEN } from './app.constants';
 
 @Injectable({ providedIn: 'root' })
@@ -118,6 +120,8 @@ export class ValidProjectIdGuard {
 export class DefaultStartPageGuard {
   private _globalConfigService = inject(GlobalConfigService);
   private _projectService = inject(ProjectService);
+  private _tagService = inject(TagService);
+  private _lastPageService = inject(LastPageService);
   private _dataInitStateService = inject(DataInitStateService);
   private _router = inject(Router);
 
@@ -134,6 +138,10 @@ export class DefaultStartPageGuard {
 
   private _resolve(startPage: number | string | undefined): Observable<UrlTree> {
     const appFeatures = this._globalConfigService.appFeatures();
+
+    if (startPage === DefaultStartPage.LastPage) {
+      return this._resolveLastPage();
+    }
 
     if (typeof startPage === 'string' && startPage.length > 0) {
       // Project id — look it up so getStartPageUrlPath can fall back to Today
@@ -155,5 +163,54 @@ export class DefaultStartPageGuard {
     return of(
       this._router.parseUrl(getStartPageUrlPath(startPage, appFeatures, undefined)),
     );
+  }
+
+  /**
+   * "Where I left off": the page this device was last on, if it still exists
+   * and its feature is on; otherwise Today.
+   */
+  private _resolveLastPage(): Observable<UrlTree> {
+    const page = this._lastPageService.read();
+    const appFeatures = this._globalConfigService.appFeatures();
+    const today = (): UrlTree =>
+      this._router.parseUrl(
+        getStartPageUrlPath(DefaultStartPage.Today, appFeatures, undefined),
+      );
+    const lookupFailed = (err: unknown): Observable<undefined> => {
+      Log.warn('DefaultStartPageGuard: failed to look up the last page', err);
+      return of(undefined);
+    };
+
+    switch (page?.kind) {
+      case 'project':
+        return this._projectService.getByIdOnce$(page.id).pipe(
+          catchError(lookupFailed),
+          map((project) =>
+            project && !project.isArchived && !project.isHiddenFromMenu
+              ? this._router.parseUrl(page.path)
+              : today(),
+          ),
+        );
+      case 'tag':
+        return this._tagService.getTagById$(page.id).pipe(
+          take(1),
+          catchError(lookupFailed),
+          map((tag) => (tag ? this._router.parseUrl(page.path) : today())),
+        );
+      case 'planner':
+        return of(
+          appFeatures.isPlannerEnabled ? this._router.parseUrl(page.path) : today(),
+        );
+      case 'schedule':
+        return of(
+          appFeatures.isSchedulerEnabled ? this._router.parseUrl(page.path) : today(),
+        );
+      case 'boards':
+        return of(
+          appFeatures.isBoardsEnabled ? this._router.parseUrl(page.path) : today(),
+        );
+      default:
+        return of(today());
+    }
   }
 }

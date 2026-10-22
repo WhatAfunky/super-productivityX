@@ -7,4 +7,7 @@ export enum DefaultStartPage {
   Planner = 2,
   Schedule = 3,
   Boards = 4,
+  // Fork: reopen the last page this device was on (see last-page.util.ts).
+  // Clients without it fall back to Today.
+  LastPage = 5,
 }

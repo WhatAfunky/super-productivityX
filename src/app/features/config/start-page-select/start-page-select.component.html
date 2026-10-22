@@ -4,6 +4,10 @@
   [formlyAttributes]="field"
   [id]="id"
 >
+  <mat-option [value]="DefaultStartPage.LastPage">{{
+    T.GCF.MISC.START_PAGE_LAST_PAGE | translate
+  }}</mat-option>
+
   <mat-option [value]="DefaultStartPage.Today">{{
     T.G.TODAY_TAG_TITLE | translate
   }}</mat-option>

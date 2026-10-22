@@ -2882,6 +2882,7 @@
       "DARK_MODE_LIGHT": "Light",
       "DARK_MODE_SYSTEM": "System",
       "DEFAULT_START_PAGE": "Default start page",
+      "START_PAGE_LAST_PAGE": "Where I left off",
       "FIRST_DAY_OF_WEEK": "First day of the week",
       "HELP": "<p><strong>Not seeing desktop notifications?</strong> For Windows you may want to check 'System' > 'Notifications & actions' and verify the required notifications are enabled.</p>",
       "IS_CHECK_FOR_UPDATES": "Automatically check for new versions (desktop only)",
