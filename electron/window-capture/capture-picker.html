@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src data:; style-src 'self' file:; script-src 'self' file:"
+    />
+    <title>Choose a window</title>
+    <link
+      rel="stylesheet"
+      href="capture-picker.css"
+    />
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1 id="title"></h1>
+        <p id="hint"></p>
+      </div>
+      <button
+        id="refresh"
+        type="button"
+      ></button>
+    </header>
+    <div
+      id="permission"
+      hidden
+    >
+      <span id="permission-text"></span>
+      <button
+        id="open-settings"
+        type="button"
+      ></button>
+    </div>
+    <main id="grid"></main>
+    <p
+      id="empty"
+      hidden
+    ></p>
+    <footer>
+      <button
+        id="cancel"
+        type="button"
+      ></button>
+      <button
+        id="use"
+        type="button"
+        class="primary"
+        disabled
+      ></button>
+    </footer>
+    <script src="capture-picker-renderer.js"></script>
+  </body>
+</html>

@@ -13,6 +13,7 @@ import {
 } from './store/layer.actions';
 import { selectAllLayers, selectLayersByProjectIdMap } from './store/layer.selectors';
 import { sanitizeLayerTitle } from './layer.util';
+import { isCaptureId } from './layer-capture.util';
 import { SnackService } from '../../core/snack/snack.service';
 import { TranslateService } from '@ngx-translate/core';
 import { LayerImageService } from './layer-image.service';
@@ -253,8 +254,21 @@ export class LayerService {
   deleteLayer(layer: Layer): void {
     this._store.dispatch(deleteLayer({ id: layer.id }));
     // Local side effect of a local user intent: not an effect, so a replayed
-    // or remote delete never touches files.
+    // or remote delete never touches files. The capture history goes too.
     void this._layerImageService.delete(layer.imageId);
+    void this._layerImageService
+      .listCaptures(layer.id)
+      .then((captures) => this._layerImageService.deleteMany(captures.map((c) => c.id)));
+  }
+
+  /**
+   * Points the layer at an image that is already stored, e.g. an auto-screenshot
+   * capture. The previous image is deleted unless it is part of the history.
+   */
+  setImageId(layer: Pick<Layer, 'id' | 'imageId'>, imageId: string): void {
+    if (layer.imageId === imageId) return;
+    this._store.dispatch(updateLayer({ layer: { id: layer.id, changes: { imageId } } }));
+    this._deleteUnlessCapture(layer.imageId);
   }
 
   /** Stores `image` on this device and points the layer at it. */
@@ -267,7 +281,7 @@ export class LayerService {
       return false;
     }
     this._store.dispatch(updateLayer({ layer: { id: layer.id, changes: { imageId } } }));
-    void this._layerImageService.delete(layer.imageId);
+    this._deleteUnlessCapture(layer.imageId);
     return true;
   }
 
@@ -276,7 +290,14 @@ export class LayerService {
     this._store.dispatch(
       updateLayer({ layer: { id: layer.id, changes: { imageId: null } } }),
     );
-    void this._layerImageService.delete(layer.imageId);
+    this._deleteUnlessCapture(layer.imageId);
+  }
+
+  /** Captures stay in the layer's history when they stop being its screenshot. */
+  private _deleteUnlessCapture(imageId: string | null | undefined): void {
+    if (!isCaptureId(imageId)) {
+      void this._layerImageService.delete(imageId);
+    }
   }
 
   /** Deletes this device's screenshot files that no layer points at any more. */
@@ -286,6 +307,9 @@ export class LayerService {
     for (const l of layers) {
       if (l.imageId) referenced.add(l.imageId);
     }
-    return this._layerImageService.deleteOrphans(referenced);
+    return this._layerImageService.deleteOrphans(
+      referenced,
+      new Set(layers.map((l) => l.id)),
+    );
   }
 }

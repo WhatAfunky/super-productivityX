@@ -20,6 +20,7 @@ import { selectAllLayers, selectLayersByProjectIdMap } from './store/layer.selec
 import { selectLayerLabelEntities } from './store/layer-label.selectors';
 import { DialogAddLayerData } from './dialog-add-layer/dialog-add-layer.component';
 import { LayerLabel } from './layer-label.model';
+import { createCaptureId } from './layer-capture.util';
 
 describe('LayerService', () => {
   let service: LayerService;
@@ -46,8 +47,12 @@ describe('LayerService', () => {
       'copy',
       'delete',
       'deleteOrphans',
+      'listCaptures',
+      'deleteMany',
     ]);
     images.delete.and.resolveTo();
+    images.listCaptures.and.resolveTo([]);
+    images.deleteMany.and.resolveTo();
     snack = jasmine.createSpyObj<SnackService>('SnackService', ['open']);
     dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
     addLabel = jasmine.createSpy('addLabel').and.returnValue('createdLabel');
@@ -274,7 +279,10 @@ describe('LayerService', () => {
     ]);
     images.deleteOrphans.and.resolveTo(0);
     await service.deleteOrphanedImages();
-    expect(images.deleteOrphans).toHaveBeenCalledOnceWith(new Set(['layer-a']));
+    expect(images.deleteOrphans).toHaveBeenCalledOnceWith(
+      new Set(['layer-a']),
+      new Set(['l1', 'l2']),
+    );
   });
 
   describe('moveToProject', () => {
@@ -321,6 +329,33 @@ describe('LayerService', () => {
       expect(dispatchSpy).toHaveBeenCalledOnceWith(
         moveLayerToProject({ id: 'l1', projectId: 'p2', labelId: null }),
       );
+    });
+  });
+
+  describe('capture history', () => {
+    const capId = createCaptureId('l1', 1000);
+
+    it('replacing a capture screenshot keeps the capture in the history', () => {
+      service.setImageId(layer({ imageId: capId }), 'layer-new');
+      expect(dispatchSpy).toHaveBeenCalledOnceWith(
+        updateLayer({ layer: { id: 'l1', changes: { imageId: 'layer-new' } } }),
+      );
+      expect(images.delete).not.toHaveBeenCalled();
+    });
+
+    it('a hand-added screenshot replaced by a capture is deleted', () => {
+      service.setImageId(layer({ imageId: 'layer-manual' }), capId);
+      expect(images.delete).toHaveBeenCalledOnceWith('layer-manual');
+    });
+
+    it('deleting a layer deletes its capture history too', async () => {
+      images.listCaptures.and.resolveTo([
+        { id: capId, layerId: 'l1', takenAt: 1000, size: 1 },
+      ]);
+      service.deleteLayer(layer({ imageId: capId }));
+      await new Promise((r) => setTimeout(r, 0));
+      expect(images.listCaptures).toHaveBeenCalledOnceWith('l1');
+      expect(images.deleteMany).toHaveBeenCalledOnceWith([capId]);
     });
   });
 });

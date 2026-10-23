@@ -442,3 +442,31 @@ Mockup: `docs/plans/2026-10-22-auto-screenshots-mockup.html`.
 - **Device-local:** captures and the window choice are not synced.
 - **Finding the window again:** by window id, else by matching title, else skip the capture and ask the user to re-pick (a one-time note, no popups).
 - **macOS:** needs Screen Recording permission. The app detects a missing permission (blank captures) and shows a banner with "Open System Settings" instead of saving blank images. Ad-hoc local builds may need re-granting after each rebuild.
+
+## 26. v3.3 auto screenshots as built (2026-10-23)
+
+- **Electron main (`electron/window-capture/`):** `initWindowCaptureIpc` registers `CAPTURE_PICK_WINDOW` (opens the picker), `CAPTURE_WINDOW`, `CAPTURE_PERMISSION` and `CAPTURE_OPEN_SETTINGS`.
+- **Security model:**
+  - The main window's renderer is untrusted (plugins run there), so window thumbnails go **only** to a main-process-owned picker window (`capture-picker.html` with its own preload and a CSP).
+  - The renderer only gets back `{ id, title }` of the chosen window.
+  - `captureWindow` works only for **granted** targets (windows picked there, persisted as `windowCaptureGrants` in the simple store, capped at 200). Picker messages are accepted only from the picker's `webContents`, and the app's own windows are never offered.
+- **Finding the window again:** `findCaptureSource` tries the id, then the exact title, then the title's document part (`captureTitleKey` strips " @ 33%", " - Blender", " — PureRef", …) when exactly one window matches. The grant follows the window.
+- **macOS permission:** `systemPreferences.getMediaAccessStatus('screen')`. When it isn't granted, captures return `reason: 'permission'` instead of blank images.
+- **Capture size:** scaled to fit 2560×2560, re-encoded to WebP if over 1 MB, plus a 256 px thumbnail (the existing layer image pipeline).
+- **Storage, no index:** captures are files `layer-cap-<layerId>-<takenAt base36>` in the layer image store, and the history is read from the store's listing (`LayerImageService.listCaptures`, sizes include thumbnails).
+  - They're valid layer image ids, so they resolve, export, and stay hidden from the clipboard-images manager.
+  - The orphan sweep keeps captures of existing layers (`deleteOrphans(referenced, existingLayerIds)`).
+  - Deleting a layer deletes its history.
+  - Replacing or removing a screenshot never deletes a capture (`LayerService._deleteUnlessCapture`).
+- **`LayerCaptureService` (app side):**
+  - **Device-local settings:** the per-layer `{ target, isEnabled }` (`LS.LAYER_CAPTURE_TARGETS`) and the acknowledged warning level (`LS.LAYER_CAPTURE_WARN_ACK`).
+  - **Schedule:** `activeLayerId` is the layer whose ▶ goal is tracked while a work session runs; an effect captures every 5 minutes and stops on pause or end.
+  - **Each capture becomes the layer's screenshot** (`setImageId`: the only synced write is the existing `imageId` pointer, about one `updateLayer` op per 5 minutes). Before the first capture replaces a hand-added screenshot, that screenshot is copied into the history.
+  - **Skips and permission:** skipped captures are counted per layer (banner: choose another window / dismiss); a missing permission shows a banner with Open System Settings.
+  - **100 MB warning:** past each 100 MB step a banner offers **Thin out** (`capturesToThinOut`: all of the last 7 days, then the first capture per hour up to 30 days, then per day, never the current screenshot), **Export & clear** (ZIP via `LayerExportService.exportCaptures`, then delete everything except the current screenshot) or **Keep everything** (acknowledge until the next step). A ⚠ marker shows on the row.
+- **UI:** `layer-capture-panel` in the layer preview (desktop only) has the window, the on/off toggle, Change window, Capture now, the banners, and the history: viewer, slider, the latest 48 thumbnails, Play timelapse, Use as layer screenshot, Export, and Delete capture. Rows show a red dot while capturing.
+- **Verified:**
+  - **Tests:** Angular suite 16,970 passing, incl. util, `LayerCaptureService` (pick, capture into history and screenshot, adopting a manual screenshot, skips, permission, delete fallback, warning and keep-everything, export & clear) and `LayerImageService` (capture listing and sizes, orphan sweep, `saveAs` validation). Electron 340 passing, incl. `window-capture.test.cjs` (not-granted refused, own windows excluded, the picker's choice becomes a grant, picker messages from other windows ignored, re-found by title after an app restart, permission and not-found reasons, title matching).
+  - **Picker:** rendered with a stand-in API.
+  - **Panel:** exercised in the web build with a stand-in capture API: captures, the screenshot following the latest, both banners, using an older capture, deleting the current one, and the row dot during a session.
+  - **Not yet exercised against real windows and the macOS permission prompt:** that needs the desktop build.

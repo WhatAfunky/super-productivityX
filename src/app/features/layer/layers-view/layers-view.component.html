@@ -539,6 +539,9 @@
           (change)="onFileChosen(layer, $event)"
         />
       </div>
+      @if (isCaptureAvailable) {
+        <layer-capture-panel [layer]="layer"></layer-capture-panel>
+      }
     } @else {
       <p class="empty">{{ T.F.LAYER.NO_SELECTION | translate }}</p>
     }
@@ -617,6 +620,12 @@
                   <mat-icon class="anchor-ico">star</mat-icon>
                 }
                 -->
+                @if (row.layer.id === captureLayerId()) {
+                  <span
+                    class="rec-dot"
+                    [matTooltip]="T.F.LAYER.CAPTURE_ACTIVE | translate"
+                  ></span>
+                }
                 @if (row.layer.id === focusedLayerId()) {
                   <mat-icon
                     class="focus-ico"
@@ -630,6 +639,13 @@
                 {{ row.layer.createdAt | localeDate: 'mediumDate' }}
                 @if (row.label && viewMode() !== 'label') {
                   <layer-label-pill [label]="row.label"></layer-label-pill>
+                }
+                @if (captureWarnedIds().has(row.layer.id)) {
+                  <span
+                    class="capture-warn"
+                    [matTooltip]="T.F.LAYER.CAPTURE_THIN_OUT | translate"
+                    >⚠ {{ T.F.LAYER.CAPTURE_HISTORY | translate }}</span
+                  >
                 }
               </span>
             </span>

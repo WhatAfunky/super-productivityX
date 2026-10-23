@@ -33,6 +33,8 @@ import { Layer } from '../layer.model';
 import { LayerLabel } from '../layer-label.model';
 import { AddLayerDefaults, LayerService } from '../layer.service';
 import { LayerFocusService } from '../layer-focus.service';
+import { LayerCaptureService } from '../layer-capture.service';
+import { LayerCapturePanelComponent } from '../layer-capture-panel/layer-capture-panel.component';
 import { LayerExportService } from '../layer-export.service';
 import { Container, LayerOrganizeService, OrganizeItem } from '../layer-organize.service';
 import { LayerGroup } from '../layer-group.model';
@@ -182,6 +184,7 @@ const writeViewMode = (projectId: string, mode: LayerViewMode): void => {
   selector: 'layers-view',
   standalone: true,
   imports: [
+    LayerCapturePanelComponent,
     NgTemplateOutlet,
     CollapsibleComponent,
     SegmentedButtonGroupComponent,
@@ -209,6 +212,11 @@ export class LayersViewComponent {
   private _layerService = inject(LayerService);
   private _layerFocusService = inject(LayerFocusService);
   private _snackService = inject(SnackService);
+  private _captureService = inject(LayerCaptureService);
+  /** Auto screenshots (v3.3): desktop app only. */
+  readonly isCaptureAvailable = this._captureService.isAvailable;
+  readonly captureLayerId = this._captureService.activeLayerId;
+  readonly captureWarnedIds = this._captureService.warnedLayerIds;
   private _layerLabelService = inject(LayerLabelService);
   private _sectionService = inject(SectionService);
   private _matDialog = inject(MatDialog);

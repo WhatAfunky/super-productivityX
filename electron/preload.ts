@@ -1,5 +1,10 @@
 import { ipcRenderer, webFrame, contextBridge, webUtils } from 'electron';
 import { ElectronAPI } from './electronAPI.d';
+import {
+  CapturePermission,
+  CaptureResult,
+  CaptureTarget,
+} from './shared-with-frontend/window-capture.model';
 import { IS_GNOME_DESKTOP, IS_GNOME_WAYLAND } from './common.const';
 import { IPC, IPCEventValue } from './shared-with-frontend/ipc-events.const';
 import {
@@ -203,6 +208,11 @@ const ea: ElectronAPI = {
   updateFocusWidget: (state) => _send('FOCUS_WIDGET_STATE', state),
   updateFocusWidgetImage: (dataUrl) => _send('FOCUS_WIDGET_IMAGE', dataUrl),
   popOutFocusWidget: () => _send('FOCUS_WIDGET_POP_OUT'),
+  pickCaptureWindow: (labels) =>
+    _invoke('CAPTURE_PICK_WINDOW', labels) as Promise<CaptureTarget | null>,
+  captureWindow: (target) => _invoke('CAPTURE_WINDOW', target) as Promise<CaptureResult>,
+  getCapturePermission: () => _invoke('CAPTURE_PERMISSION') as Promise<CapturePermission>,
+  openCaptureSettings: () => _send('CAPTURE_OPEN_SETTINGS'),
   updateTitleBarDarkMode: (isDarkMode: boolean) =>
     _send('UPDATE_TITLE_BAR_DARK_MODE', isDarkMode),
   registerGlobalShortcuts: (keyboardCfg) =>

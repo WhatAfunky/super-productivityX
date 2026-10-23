@@ -9,6 +9,7 @@ import {
   HostBinding,
   HostListener,
   inject,
+  Injector,
   NgZone,
   OnDestroy,
   signal,
@@ -80,6 +81,7 @@ import { MobileBottomNavComponent } from './core-ui/mobile-bottom-nav/mobile-bot
 import { StartupService } from './core/startup/startup.service';
 import { LastPageService } from './features/config/last-page.service';
 import { FocusWidgetService } from './features/focus-mode/focus-widget.service';
+import { LayerCaptureService } from './features/layer/layer-capture.service';
 import { DataInitStateService } from './core/data-init/data-init-state.service';
 import { AppUriTaskActionsService } from './features/tasks/app-uri-actions/app-uri-task-actions.service';
 import { IosShareService } from './features/tasks/ios-share/ios-share.service';
@@ -160,6 +162,7 @@ export class AppComponent implements OnDestroy, AfterViewInit {
   private _startupService = inject(StartupService);
   private _lastPageService = inject(LastPageService);
   private _focusWidgetService = inject(FocusWidgetService);
+  private _injector = inject(Injector);
   // Injected for side-effect: creates example tasks on first run
   private _exampleTasksService = inject(ExampleTasksService);
   // Injected for side-effect: loads per-instance task widget settings from
@@ -237,6 +240,10 @@ export class AppComponent implements OnDestroy, AfterViewInit {
     this._startupService.init();
     this._lastPageService.init();
     this._focusWidgetService.init();
+    if (IS_ELECTRON) {
+      // Resolved on use: Layers is optional and not a start-up dependency.
+      this._injector.get(LayerCaptureService).init();
+    }
     this._iosShareService.start();
     void this._materialIconsLoaderService.ensureFontReady();
 

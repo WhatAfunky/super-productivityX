@@ -521,3 +521,19 @@
   color: var(--text-color-muted);
   font-size: var(--font-size-sm);
 }
+
+// Auto screenshots (v3.3): capturing indicator and history-size warning.
+.rec-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-inline-end: var(--s-half);
+  border-radius: 50%;
+  background: var(--c-warn);
+  vertical-align: middle;
+}
+
+.capture-warn {
+  color: var(--c-warn);
+  font-size: var(--font-size-sm);
+}

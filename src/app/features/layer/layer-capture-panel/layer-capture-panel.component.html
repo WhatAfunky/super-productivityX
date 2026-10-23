@@ -1,0 +1,218 @@
+<section
+  class="capture"
+  [attr.aria-label]="T.F.LAYER.CAPTURE_TITLE | translate"
+>
+  <div class="capture-head">
+    <span class="capture-title">
+      @if (isActive()) {
+        <span
+          class="rec-dot"
+          [matTooltip]="T.F.LAYER.CAPTURE_ACTIVE | translate"
+        ></span>
+      }
+      {{ T.F.LAYER.CAPTURE_TITLE | translate }}
+    </span>
+    @if (setting(); as s) {
+      <mat-slide-toggle
+        color="primary"
+        [checked]="s.isEnabled"
+        [attr.aria-label]="T.F.LAYER.CAPTURE_TOGGLE | translate"
+        [matTooltip]="T.F.LAYER.CAPTURE_TOGGLE | translate"
+        (change)="setEnabled($event.checked)"
+      ></mat-slide-toggle>
+    }
+  </div>
+
+  @if (setting(); as s) {
+    <div
+      class="capture-window"
+      [title]="s.target.title"
+    >
+      {{ s.target.title }}
+    </div>
+    <div class="capture-meta">
+      {{ T.F.LAYER.CAPTURE_META | translate: { count: stats().count, size: sizeText() } }}
+    </div>
+    <div class="capture-actions">
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="pickWindow()"
+      >
+        {{ T.F.LAYER.CAPTURE_CHANGE | translate }}
+      </button>
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="isBusy()"
+        (click)="captureNow()"
+      >
+        <mat-icon>photo_camera</mat-icon>
+        {{ T.F.LAYER.CAPTURE_NOW | translate }}
+      </button>
+    </div>
+  } @else {
+    <p class="capture-hint">{{ T.F.LAYER.CAPTURE_HINT | translate }}</p>
+    <div class="capture-actions">
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="pickWindow()"
+      >
+        <mat-icon>web_asset</mat-icon>
+        {{ T.F.LAYER.CAPTURE_CHOOSE | translate }}
+      </button>
+    </div>
+  }
+
+  @if (isPermissionMissing()) {
+    <div class="capture-banner">
+      {{ T.F.LAYER.CAPTURE_PERMISSION_MSG | translate }}
+      <div class="capture-actions">
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          (click)="captureService.openPermissionSettings()"
+        >
+          {{ T.F.LAYER.CAPTURE_OPEN_SETTINGS | translate }}
+        </button>
+      </div>
+    </div>
+  }
+
+  @if (skipped()) {
+    <div class="capture-banner">
+      {{ T.F.LAYER.CAPTURE_SKIPPED | translate: { count: skipped() } }}
+      <div class="capture-actions">
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="pickWindow()"
+        >
+          {{ T.F.LAYER.CAPTURE_CHOOSE_OTHER | translate }}
+        </button>
+        <button
+          mat-button
+          type="button"
+          (click)="dismissSkipped()"
+        >
+          {{ T.F.LAYER.CAPTURE_DISMISS | translate }}
+        </button>
+      </div>
+    </div>
+  }
+
+  @if (warnLevel()) {
+    <div class="capture-banner">
+      {{ T.F.LAYER.CAPTURE_WARN | translate: { size: sizeText() } }}
+      <div class="capture-actions">
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          (click)="thinOut()"
+        >
+          {{ T.F.LAYER.CAPTURE_THIN_OUT | translate }}
+        </button>
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="exportAndClear()"
+        >
+          {{ T.F.LAYER.CAPTURE_EXPORT_CLEAR | translate }}
+        </button>
+        <button
+          mat-button
+          type="button"
+          (click)="keepEverything()"
+        >
+          {{ T.F.LAYER.CAPTURE_KEEP_ALL | translate }}
+        </button>
+      </div>
+    </div>
+  }
+
+  @if (captures().length) {
+    <div class="capture-history">
+      <div class="capture-title">{{ T.F.LAYER.CAPTURE_HISTORY | translate }}</div>
+      @if (selected(); as capture) {
+        <layer-image
+          class="capture-view"
+          variant="full"
+          [imageId]="capture.id"
+        ></layer-image>
+        <input
+          class="capture-slider"
+          type="range"
+          min="0"
+          [max]="captures().length - 1"
+          [value]="selectedIndex()"
+          [attr.aria-label]="T.F.LAYER.CAPTURE_HISTORY | translate"
+          (input)="onSlide($event)"
+        />
+        <div class="capture-meta capture-when">
+          <span>{{ capture.takenAt | localeDate: 'short' }}</span>
+          <span>{{ selectedIndex() + 1 }} / {{ captures().length }}</span>
+        </div>
+        <div class="capture-actions">
+          <button
+            mat-icon-button
+            type="button"
+            [disabled]="captures().length < 2"
+            [matTooltip]="
+              (isPlaying() ? T.F.LAYER.CAPTURE_PAUSE : T.F.LAYER.CAPTURE_PLAY) | translate
+            "
+            [attr.aria-label]="
+              (isPlaying() ? T.F.LAYER.CAPTURE_PAUSE : T.F.LAYER.CAPTURE_PLAY) | translate
+            "
+            (click)="togglePlay()"
+          >
+            <mat-icon>{{ isPlaying() ? 'pause' : 'play_arrow' }}</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            type="button"
+            [disabled]="capture.id === layer().imageId"
+            [matTooltip]="T.F.LAYER.CAPTURE_USE | translate"
+            [attr.aria-label]="T.F.LAYER.CAPTURE_USE | translate"
+            (click)="useAsScreenshot()"
+          >
+            <mat-icon>wallpaper</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            type="button"
+            [matTooltip]="T.F.LAYER.CAPTURE_EXPORT | translate"
+            [attr.aria-label]="T.F.LAYER.CAPTURE_EXPORT | translate"
+            (click)="exportAll()"
+          >
+            <mat-icon>download</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            type="button"
+            [matTooltip]="T.F.LAYER.CAPTURE_DELETE | translate"
+            [attr.aria-label]="T.F.LAYER.CAPTURE_DELETE | translate"
+            (click)="deleteSelected()"
+          >
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      }
+      <div class="capture-strip">
+        @for (item of strip(); track item.capture.id) {
+          <button
+            type="button"
+            class="capture-thumb"
+            [class.isSelected]="item.index === selectedIndex()"
+            [attr.aria-label]="item.capture.takenAt | localeDate: 'short'"
+            (click)="select(item.index)"
+          >
+            <layer-image [imageId]="item.capture.id"></layer-image>
+          </button>
+        }
+      </div>
+    </div>
+  }
+</section>

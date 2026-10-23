@@ -108,6 +108,33 @@ export class LayerExportService {
     return imageCount;
   }
 
+  /**
+   * A layer's auto-screenshot history as a ZIP of numbered images, oldest
+   * first (any video tool can turn it into a timelapse). Returns the count.
+   */
+  async exportCaptures(layer: Layer): Promise<number> {
+    const captures = await this._layerImageService.listCaptures(layer.id);
+    const width = Math.max(3, String(captures.length).length);
+    const entries: ZipEntry[] = [];
+    for (const [i, capture] of captures.entries()) {
+      const image = await this._layerImageService.getFull(capture.id);
+      if (!image) continue;
+      const d = new Date(capture.takenAt);
+      const time = `${pad(d.getHours())}-${pad(d.getMinutes())}`;
+      entries.push({
+        name: `${pad(i + 1, width)} ${localDay(capture.takenAt)} ${time}${extensionFor(image)}`,
+        data: new Uint8Array(await image.arrayBuffer()),
+        date: d,
+      });
+    }
+    if (!entries.length) return 0;
+    this._downloadBlob(
+      createStoredZip(entries),
+      `${toSafeFileName(layer.title, 60)} - captures.zip`,
+    );
+    return entries.length;
+  }
+
   private _downloadBlob(blob: Blob, fileName: string): void {
     // Desktop browsers download it; Electron shows its save dialog.
     const url = URL.createObjectURL(blob);

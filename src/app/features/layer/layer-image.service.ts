@@ -4,6 +4,7 @@ import { ClipboardImageService } from '../../core/clipboard-image/clipboard-imag
 import { Log } from '../../core/log';
 import { createLayerImageId, isValidLayerImageId } from './layer.util';
 import { getLayerThumbnailId, makeThumbnail, reencodeIfLarge } from './layer-image.util';
+import { LayerCapture, parseCaptureId } from './layer-capture.util';
 
 /** Decoded image URLs kept alive; older ones are released (LRU). */
 const MAX_CACHED_THUMBNAILS = 120;
@@ -62,7 +63,12 @@ export class LayerImageService {
 
   /** Saves the image (re-encoded if large) plus its thumbnail. Returns the new id. */
   async save(image: Blob): Promise<string | null> {
-    const imageId = createLayerImageId(nanoid());
+    return this.saveAs(createLayerImageId(nanoid()), image);
+  }
+
+  /** Like save(), under a given id (auto-screenshot captures). */
+  async saveAs(imageId: string, image: Blob): Promise<string | null> {
+    if (!isValidLayerImageId(imageId)) return null;
     const full = await reencodeIfLarge(image);
     let savedUrl: string | null = null;
     try {
@@ -136,7 +142,10 @@ export class LayerImageService {
    * and only ones older than a minute, so a screenshot being saved right now
    * is never caught.
    */
-  async deleteOrphans(referencedImageIds: ReadonlySet<string>): Promise<number> {
+  async deleteOrphans(
+    referencedImageIds: ReadonlySet<string>,
+    existingLayerIds: ReadonlySet<string> = new Set(),
+  ): Promise<number> {
     const keep = new Set<string>();
     for (const id of referencedImageIds) {
       keep.add(id);
@@ -149,11 +158,55 @@ export class LayerImageService {
     } catch {
       return 0;
     }
+    // A layer's capture history (and each capture's thumbnail) belongs to the
+    // layer, referenced or not.
+    const isOwnCapture = (id: string): boolean => {
+      const capture = parseCaptureId(id.replace(/-thumb$/, ''));
+      return !!capture && existingLayerIds.has(capture.layerId);
+    };
     const orphans = images.filter(
-      (img) => isValidLayerImageId(img.id) && !keep.has(img.id) && img.createdAt < cutoff,
+      (img) =>
+        isValidLayerImageId(img.id) &&
+        !keep.has(img.id) &&
+        !isOwnCapture(img.id) &&
+        img.createdAt < cutoff,
     );
     await Promise.all(orphans.map((img) => this._deleteFile(img.id)));
     return orphans.length;
+  }
+
+  /**
+   * Auto-screenshot captures on this device, oldest first; `size` includes the
+   * capture's thumbnail. All layers when no id is given.
+   */
+  async listCaptures(layerId?: string): Promise<LayerCapture[]> {
+    let images: { id: string; size: number }[] = [];
+    try {
+      images = await this._clipboardImageService.listImages();
+    } catch {
+      return [];
+    }
+    const byId = new Map<string, LayerCapture>();
+    const thumbSizes = new Map<string, number>();
+    for (const img of images) {
+      if (img.id.endsWith('-thumb')) {
+        thumbSizes.set(img.id.slice(0, -'-thumb'.length), img.size || 0);
+        continue;
+      }
+      const parsed = parseCaptureId(img.id);
+      if (!parsed || (layerId && parsed.layerId !== layerId)) continue;
+      byId.set(img.id, { id: img.id, ...parsed, size: img.size || 0 });
+    }
+    for (const [id, size] of thumbSizes) {
+      const capture = byId.get(id);
+      if (capture) capture.size += size;
+    }
+    return [...byId.values()].sort((a, b) => a.takenAt - b.takenAt);
+  }
+
+  /** Deletes several captures (and their thumbnails). */
+  async deleteMany(imageIds: readonly string[]): Promise<void> {
+    await Promise.all(imageIds.map((id) => this.delete(id)));
   }
 
   private async _saveThumbnail(imageId: string, full: Blob): Promise<Blob | null> {

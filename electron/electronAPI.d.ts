@@ -8,6 +8,12 @@
 /// <reference types="node" />
 import { FocusWidgetState } from './shared-with-frontend/focus-widget.model';
 import {
+  CapturePermission,
+  CapturePickerLabels,
+  CaptureResult,
+  CaptureTarget,
+} from './shared-with-frontend/window-capture.model';
+import {
   GlobalConfigState,
   TakeABreakConfig,
   TaskWidgetConfig,
@@ -251,6 +257,16 @@ export interface ElectronAPI {
 
   /** Hide the main window and show the floating focus window. */
   popOutFocusWidget(): void;
+
+  /** Auto screenshots: open the window picker (main-process owned). */
+  pickCaptureWindow(labels: CapturePickerLabels): Promise<CaptureTarget | null>;
+
+  /** Auto screenshots: capture a window picked before (re-found by id or title). */
+  captureWindow(target: CaptureTarget): Promise<CaptureResult>;
+
+  getCapturePermission(): Promise<CapturePermission>;
+
+  openCaptureSettings(): void;
 
   updateTitleBarDarkMode(isDarkMode: boolean): void;
 

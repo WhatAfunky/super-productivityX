@@ -3,6 +3,7 @@ import { LayerImageService } from './layer-image.service';
 import { ClipboardImageService } from '../../core/clipboard-image/clipboard-image.service';
 import { getLayerThumbnailId, REENCODE_THRESHOLD_BYTES } from './layer-image.util';
 import { isValidLayerImageId } from './layer.util';
+import { createCaptureId } from './layer-capture.util';
 
 /** In-memory stand-in for the device storage ClipboardImageService wraps. */
 class FakeImageStore {
@@ -13,8 +14,12 @@ class FakeImageStore {
   };
   getImage = async (id: string): Promise<Blob | null> => this.files.get(id)?.blob ?? null;
   deleteImage = async (id: string): Promise<boolean> => this.files.delete(id);
-  listImages = async (): Promise<{ id: string; createdAt: number }[]> =>
-    [...this.files.entries()].map(([id, f]) => ({ id, createdAt: f.createdAt }));
+  listImages = async (): Promise<{ id: string; createdAt: number; size: number }[]> =>
+    [...this.files.entries()].map(([id, f]) => ({
+      id,
+      createdAt: f.createdAt,
+      size: f.blob.size,
+    }));
 }
 
 /**
@@ -130,5 +135,54 @@ describe('LayerImageService', () => {
         getLayerThumbnailId('layer-kept'),
       ].sort(),
     );
+  });
+
+  describe('auto-screenshot captures', () => {
+    const FIVE_MINUTES = 5 * 60 * 1000;
+    const old = (): number => Date.now() - FIVE_MINUTES;
+    const put = (id: string, bytes: number, createdAt = old()): void => {
+      store.files.set(id, { blob: new Blob(['x'.repeat(bytes)]), createdAt });
+    };
+
+    it("lists a layer's captures oldest first, counting their thumbnails", async () => {
+      const a = createCaptureId('L1', 2000);
+      const b = createCaptureId('L1', 1000);
+      put(a, 100);
+      put(getLayerThumbnailId(a), 10);
+      put(b, 50);
+      put(createCaptureId('L2', 1500), 70);
+      put('layer-plain', 5);
+
+      const captures = await service.listCaptures('L1');
+
+      expect(captures.map((c) => [c.id, c.takenAt, c.size])).toEqual([
+        [b, 1000, 50],
+        [a, 2000, 110],
+      ]);
+      expect((await service.listCaptures()).length).toBe(3);
+    });
+
+    it('the orphan sweep keeps captures of existing layers only', async () => {
+      const mine = createCaptureId('L1', 1000);
+      const gone = createCaptureId('Lgone', 1000);
+      put(mine, 10);
+      put(getLayerThumbnailId(mine), 1);
+      put(gone, 10);
+      put(getLayerThumbnailId(gone), 1);
+
+      const removed = await service.deleteOrphans(new Set(), new Set(['L1']));
+
+      expect(removed).toBe(2);
+      expect([...store.files.keys()].sort()).toEqual(
+        [mine, getLayerThumbnailId(mine)].sort(),
+      );
+    });
+
+    it('saveAs stores under the given id, and refuses invalid ones', async () => {
+      const id = createCaptureId('L1', 1234);
+      expect(await service.saveAs(id, new Blob(['png'], { type: 'image/png' }))).toBe(id);
+      expect(store.files.has(id)).toBe(true);
+      expect(await service.saveAs('../evil', new Blob(['x']))).toBeNull();
+    });
   });
 });
